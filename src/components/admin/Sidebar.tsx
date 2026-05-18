@@ -44,7 +44,7 @@ export default function Sidebar() {
         <div className="bg-emerald-600 p-2 rounded-lg">
           <Truck className="w-6 h-6 text-white" />
         </div>
-        <span className="text-xl font-bold tracking-tight">GroceryOps</span>
+        <span className="text-xl font-bold tracking-tight">ShreeJi Store Manager</span>
       </div>
 
       <nav className="flex-1 space-y-1">
@@ -109,7 +109,7 @@ export default function Sidebar() {
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-neutral-200 flex items-center justify-between px-4 z-40">
         <div className="flex items-center gap-2">
           <Truck className="w-6 h-6 text-emerald-600" />
-          <span className="font-bold tracking-tight text-lg">GroceryOps</span>
+          <span className="font-bold tracking-tight text-lg">ShreeJi Store Manager</span>
         </div>
         <button onClick={() => setIsOpen(true)} className="p-2 text-neutral-600">
           <Menu className="w-6 h-6" />

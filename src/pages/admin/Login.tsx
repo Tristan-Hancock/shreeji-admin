@@ -42,7 +42,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 rounded-2xl mb-4 shadow-xl shadow-emerald-200">
             <Truck className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-neutral-900">GroceryOps Admin</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-neutral-900">ShreeJi Store Manager Admin</h1>
           <p className="text-neutral-500 mt-2">Sign in to manage your grocery operations</p>
         </div>
 
