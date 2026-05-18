@@ -9,6 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      // ─── Auth / Users ─────────────────────────────────────────────────────
       profiles: {
         Row: {
           id: string
@@ -32,64 +33,123 @@ export type Database = {
           created_at?: string
         }
       }
-      products: {
+
+      // ─── Catalog ──────────────────────────────────────────────────────────
+      categories: {
         Row: {
           id: string
           name: string
-          description: string | null
-          category: string
+          slug: string
           image_url: string | null
           is_active: boolean
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           name: string
-          description?: string | null
-          category: string
+          slug: string
           image_url?: string | null
           is_active?: boolean
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           name?: string
-          description?: string | null
-          category?: string
+          slug?: string
           image_url?: string | null
           is_active?: boolean
           created_at?: string
+          updated_at?: string
         }
       }
+
+      products: {
+        Row: {
+          id: string
+          category_id: string
+          name: string
+          slug: string
+          brand: string | null
+          description: string | null
+          image_url: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          category_id: string
+          name: string
+          slug: string
+          brand?: string | null
+          description?: string | null
+          image_url?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          category_id?: string
+          name?: string
+          slug?: string
+          brand?: string | null
+          description?: string | null
+          image_url?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+
       product_variants: {
         Row: {
           id: string
           product_id: string
-          name: string
+          variant_name: string
+          unit_value: string | null
+          unit_type: string | null
           price: number
+          mrp: number | null
           stock_qty: number
+          sku: string | null
           is_active: boolean
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           product_id: string
-          name: string
+          variant_name: string
+          unit_value?: string | null
+          unit_type?: string | null
           price: number
-          stock_qty: number
+          mrp?: number | null
+          stock_qty?: number
+          sku?: string | null
           is_active?: boolean
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           product_id?: string
-          name?: string
+          variant_name?: string
+          unit_value?: string | null
+          unit_type?: string | null
           price?: number
+          mrp?: number | null
           stock_qty?: number
+          sku?: string | null
           is_active?: boolean
           created_at?: string
+          updated_at?: string
         }
       }
+
+      // ─── Orders ───────────────────────────────────────────────────────────
       orders: {
         Row: {
           id: string
@@ -128,6 +188,7 @@ export type Database = {
           created_at?: string
         }
       }
+
       order_items: {
         Row: {
           id: string
@@ -157,6 +218,8 @@ export type Database = {
           price_at_order?: number
         }
       }
+
+      // ─── Logistics ────────────────────────────────────────────────────────
       serviceable_pincodes: {
         Row: {
           pincode: string

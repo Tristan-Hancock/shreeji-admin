@@ -21,3 +21,17 @@ export function formatDate(date: string) {
     minute: '2-digit',
   });
 }
+
+/**
+ * Converts a human-readable name into a URL-safe slug.
+ * e.g. "Bath & Soaps" → "bath-soaps"
+ */
+export function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')   // strip non-alphanumeric (keep spaces & hyphens)
+    .replace(/\s+/g, '-')           // spaces → hyphens
+    .replace(/-+/g, '-')            // collapse consecutive hyphens
+    .replace(/^-|-$/g, '');         // trim leading/trailing hyphens
+}

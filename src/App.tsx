@@ -9,7 +9,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
 import Orders from './pages/admin/Orders';
+import Categories from './pages/admin/Categories';
 import Products from './pages/admin/Products';
+import ProductDetail from './pages/admin/ProductDetail';
 import Inventory from './pages/admin/Inventory';
 import DeliveryBoys from './pages/admin/DeliveryBoys';
 import Pincodes from './pages/admin/Pincodes';
@@ -27,7 +29,9 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
               <Route path="/admin/orders" element={<Orders />} />
+              <Route path="/admin/categories" element={<Categories />} />
               <Route path="/admin/products" element={<Products />} />
+              <Route path="/admin/products/:id" element={<ProductDetail />} />
               <Route path="/admin/inventory" element={<Inventory />} />
               <Route path="/admin/delivery-boys" element={<DeliveryBoys />} />
               <Route path="/admin/pincodes" element={<Pincodes />} />

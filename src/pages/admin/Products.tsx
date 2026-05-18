@@ -1,137 +1,683 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
   Edit2,
   Eye,
-  EyeOff,
-  Package
+  Package,
+  AlertCircle,
+  XCircle,
+  ChevronDown,
 } from 'lucide-react';
-import { ProductsRepository } from '../../repositories';
-import { formatCurrency, cn } from '../../lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
+import { ProductsRepository } from '../../repositories/products.repository';
+import { CategoriesRepository } from '../../repositories/categories.repository';
+import type { ProductListItem, Category } from '../../types/catalog';
+import type { ProductInsert, ProductUpdate } from '../../types/catalog';
+import { cn, formatCurrency, generateSlug } from '../../lib/utils';
 import StatusBadge from '../../components/ui/StatusBadge';
+import EmptyState from '../../components/ui/EmptyState';
+import { TableRowSkeleton } from '../../components/ui/LoadingSkeleton';
+import ImagePreview from '../../components/ui/ImagePreview';
+
+// ─── Shared toggle ────────────────────────────────────────────────────────
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className={cn(
+        'relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+        checked ? 'bg-emerald-500' : 'bg-neutral-300',
+      )}
+    >
+      <span
+        className={cn(
+          'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+          checked ? 'translate-x-5' : 'translate-x-0',
+        )}
+      />
+    </button>
+  );
+}
+
+// ─── Product form (used inside slide panel) ───────────────────────────────
+
+interface ProductFormValues {
+  category_id: string;
+  name: string;
+  slug: string;
+  brand: string;
+  description: string;
+  image_url: string;
+  is_active: boolean;
+}
+
+const BLANK_PRODUCT: ProductFormValues = {
+  category_id: '',
+  name: '',
+  slug: '',
+  brand: '',
+  description: '',
+  image_url: '',
+  is_active: true,
+};
+
+interface ProductFormProps {
+  initial?: Partial<ProductFormValues>;
+  categories: Category[];
+  onSubmit: (v: ProductFormValues) => Promise<void>;
+  onCancel: () => void;
+  submitting: boolean;
+  error: string | null;
+}
+
+function ProductForm({
+  initial,
+  categories,
+  onSubmit,
+  onCancel,
+  submitting,
+  error,
+}: ProductFormProps) {
+  const [values, setValues] = useState<ProductFormValues>({ ...BLANK_PRODUCT, ...initial });
+  const [slugLocked, setSlugLocked] = useState(Boolean(initial?.slug));
+
+  function handleNameChange(name: string) {
+    setValues((p) => ({
+      ...p,
+      name,
+      slug: slugLocked ? p.slug : generateSlug(name),
+    }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await onSubmit(values);
+  }
+
+  const field = 'w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm transition-shadow';
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {error && (
+        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Section: Info */}
+      <div>
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
+          Product Info
+        </p>
+
+        {/* Name */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={values.name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="e.g. Coca Cola"
+              required
+              className={field}
+            />
+          </div>
+
+          {/* Slug */}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              Slug <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm select-none">
+                /
+              </span>
+              <input
+                type="text"
+                value={values.slug}
+                onChange={(e) => {
+                  setSlugLocked(true);
+                  setValues((p) => ({ ...p, slug: e.target.value }));
+                }}
+                placeholder="coca-cola"
+                required
+                className={cn(field, 'pl-7 font-mono')}
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-neutral-400">
+              Auto-generated — edit to customise.
+            </p>
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              Category <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <select
+                value={values.category_id}
+                onChange={(e) => setValues((p) => ({ ...p, category_id: e.target.value }))}
+                required
+                className={cn(field, 'appearance-none pr-8 cursor-pointer')}
+              >
+                <option value="">Select a category…</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Brand */}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              Brand <span className="font-normal text-neutral-400">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={values.brand}
+              onChange={(e) => setValues((p) => ({ ...p, brand: e.target.value }))}
+              placeholder="e.g. Coca Cola"
+              className={field}
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              Description <span className="font-normal text-neutral-400">(optional)</span>
+            </label>
+            <textarea
+              value={values.description}
+              onChange={(e) => setValues((p) => ({ ...p, description: e.target.value }))}
+              placeholder="Short product description…"
+              rows={3}
+              className={cn(field, 'resize-none')}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Section: Image */}
+      <div>
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
+          Image
+        </p>
+        <input
+          type="url"
+          value={values.image_url}
+          onChange={(e) => setValues((p) => ({ ...p, image_url: e.target.value }))}
+          placeholder="https://..."
+          className={field}
+        />
+        {values.image_url && (
+          <div className="mt-2 rounded-xl overflow-hidden h-32 bg-neutral-100">
+            <ImagePreview url={values.image_url} alt="Product" className="w-full h-full" />
+          </div>
+        )}
+      </div>
+
+      {/* Section: Visibility */}
+      <div>
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
+          Visibility
+        </p>
+        <div className="flex items-center justify-between p-4 bg-neutral-50 border border-neutral-200 rounded-xl">
+          <div>
+            <p className="text-sm font-semibold text-neutral-900">Active</p>
+            <p className="text-xs text-neutral-500">Visible in the customer app</p>
+          </div>
+          <Toggle
+            checked={values.is_active}
+            onChange={() => setValues((p) => ({ ...p, is_active: !p.is_active }))}
+          />
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-end gap-3 pt-2 border-t border-neutral-100">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-5 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-60"
+        >
+          {submitting ? 'Saving…' : 'Save Product'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ─── Slide panel wrapper (reuses Orders detail pattern) ───────────────────
+
+interface SlidePanelProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}
+
+function SlidePanel({ open, onClose, title, subtitle, children }: SlidePanelProps) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]"
+          />
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+            className="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-[70] flex flex-col"
+          >
+            <div className="p-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-lg font-bold text-neutral-900">{title}</h2>
+                {subtitle && <p className="text-sm text-neutral-500 mt-0.5">{subtitle}</p>}
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
+              >
+                <XCircle className="w-5 h-5 text-neutral-400" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">{children}</div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────
 
 export default function Products() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
+  const navigate = useNavigate();
 
-  const fetchData = async () => {
+  const [products, setProducts] = useState<ProductListItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [editing, setEditing] = useState<ProductListItem | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // ── Data ─────────────────────────────────────────────────────────────────
+
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await ProductsRepository.getAllWithVariants();
+      const data = await ProductsRepository.listProducts({
+        search: search || undefined,
+        categoryId: categoryFilter || undefined,
+      });
       setProducts(data);
-    } catch (error) {
-      console.error('Error fetching products:', error);
+    } catch (err) {
+      console.error('Failed to load products:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, categoryFilter]);
 
   useEffect(() => {
-    fetchData();
+    fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    CategoriesRepository.listCategories()
+      .then(setCategories)
+      .catch(console.error);
   }, []);
 
-  const handleToggleProduct = async (id: string, currentStatus: boolean) => {
+  // ── Panel helpers ────────────────────────────────────────────────────────
+
+  function openCreate() {
+    setEditing(null);
+    setFormError(null);
+    setPanelOpen(true);
+  }
+
+  function openEdit(p: ProductListItem) {
+    setEditing(p);
+    setFormError(null);
+    setPanelOpen(true);
+  }
+
+  function closePanel() {
+    setPanelOpen(false);
+    setEditing(null);
+    setFormError(null);
+  }
+
+  // ── Submit ───────────────────────────────────────────────────────────────
+
+  async function handleSubmit(values: ProductFormValues) {
+    setSubmitting(true);
+    setFormError(null);
     try {
-      await ProductsRepository.toggleProductActive(id, !currentStatus);
-      fetchData();
-    } catch (error) {
-      console.error('Error toggling product status:', error);
+      const payload = {
+        category_id: values.category_id,
+        name: values.name.trim(),
+        slug: values.slug.trim(),
+        brand: values.brand.trim() || null,
+        description: values.description.trim() || null,
+        image_url: values.image_url.trim() || null,
+        is_active: values.is_active,
+      };
+
+      if (editing) {
+        await ProductsRepository.updateProduct(editing.id, payload as ProductUpdate);
+      } else {
+        await ProductsRepository.createProduct(payload as ProductInsert);
+      }
+
+      closePanel();
+      await fetchProducts();
+    } catch (err: any) {
+      setFormError(err?.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-  };
+  }
 
-  const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
+  // ── Toggle ───────────────────────────────────────────────────────────────
 
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'all' || p.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  async function handleToggle(product: ProductListItem) {
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === product.id ? { ...p, is_active: !p.is_active } : p,
+      ),
+    );
+    try {
+      await ProductsRepository.toggleProductStatus(product.id, !product.is_active);
+    } catch (err) {
+      console.error('Toggle failed:', err);
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id ? { ...p, is_active: product.is_active } : p,
+        ),
+      );
+    }
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">Products Catalog</h1>
-          <p className="text-neutral-500">Manage categories, products and pricing</p>
+          <p className="text-neutral-500 text-sm">
+            {loading ? '' : `${products.length} product${products.length === 1 ? '' : 's'}`}
+          </p>
         </div>
-        
-        <button className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-emerald-100">
-          <Plus className="w-5 h-5" /> Add New Product
+        <button
+          onClick={openCreate}
+          className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm shadow-emerald-100"
+        >
+          <Plus className="w-4 h-4" />
+          Add Product
         </button>
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={cn(
-              "px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border",
-              activeCategory === cat 
-                ? "bg-neutral-900 text-white border-neutral-900" 
-                : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300"
-            )}
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <input
+            type="text"
+            placeholder="Search products…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 bg-white border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
+          />
+        </div>
+        <div className="relative">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="appearance-none pl-3 pr-8 py-2.5 bg-white border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm cursor-pointer"
           >
-            {cat === 'all' ? 'All Categories' : cat}
-          </button>
-        ))}
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          <div className="col-span-full py-12 text-center text-neutral-400">Loading catalog...</div>
-        ) : filteredProducts.length > 0 ? (
-          filteredProducts.map((product) => (
-            <div key={product.id} className={cn(
-              "bg-white rounded-2xl border transition-all hover:shadow-lg overflow-hidden group",
-              product.is_active ? "border-neutral-200" : "border-neutral-100 opacity-75"
-            )}>
-              <div className="aspect-[16/9] relative bg-neutral-100">
-                {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-neutral-300">
-                    <Package className="w-12 h-12" />
-                  </div>
-                )}
-                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => handleToggleProduct(product.id, product.is_active)}
-                    className="p-2 bg-white/90 backdrop-blur rounded-lg shadow-sm text-neutral-600 hover:text-emerald-600"
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-neutral-50 border-b border-neutral-200">
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider w-12" />
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden md:table-cell">
+                  Category
+                </th>
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden lg:table-cell">
+                  Brand
+                </th>
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden sm:table-cell">
+                  Variants
+                </th>
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden sm:table-cell">
+                  Stock
+                </th>
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider text-right">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRowSkeleton key={i} cols={8} />
+                ))
+              ) : products.length > 0 ? (
+                products.map((product) => (
+                  <tr
+                    key={product.id}
+                    className="hover:bg-neutral-50/60 transition-colors group"
                   >
-                    {product.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  </button>
-                  <button className="p-2 bg-white/90 backdrop-blur rounded-lg shadow-sm text-neutral-600 hover:text-blue-600">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+                    {/* Image thumb */}
+                    <td className="px-5 py-3.5">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 shrink-0">
+                        <ImagePreview
+                          url={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full"
+                        />
+                      </div>
+                    </td>
 
-              <div className="p-5">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">{product.category}</span>
-                  <StatusBadge status={product.is_active ? 'active' : 'inactive'} />
-                </div>
-                <h3 className="text-lg font-bold text-neutral-900 group-hover:text-emerald-700 transition-colors">{product.name}</h3>
-                
-                <div className="mt-4 space-y-2">
-                  {product.product_variants.map((v: any) => (
-                    <div key={v.id} className="flex items-center justify-between p-2 rounded-lg bg-neutral-50 border border-neutral-100 group-hover:bg-white group-hover:border-neutral-200 transition-all">
-                      <span className="text-xs font-bold text-neutral-600">{v.name}</span>
-                      <span className="text-sm font-black text-neutral-900">{formatCurrency(v.price)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full py-12 text-center text-neutral-400">No products found</div>
-        )}
+                    {/* Name + slug */}
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm font-bold text-neutral-900 leading-snug">
+                        {product.name}
+                      </p>
+                      <p className="text-xs text-neutral-400 font-mono mt-0.5">
+                        /{product.slug}
+                      </p>
+                    </td>
+
+                    {/* Category */}
+                    <td className="px-5 py-3.5 hidden md:table-cell">
+                      <span className="text-xs font-medium text-neutral-600 bg-neutral-100 px-2 py-1 rounded-md">
+                        {product.categories?.name ?? '—'}
+                      </span>
+                    </td>
+
+                    {/* Brand */}
+                    <td className="px-5 py-3.5 hidden lg:table-cell">
+                      <span className="text-sm text-neutral-600">
+                        {product.brand ?? <span className="text-neutral-300">—</span>}
+                      </span>
+                    </td>
+
+                    {/* Variants */}
+                    <td className="px-5 py-3.5 hidden sm:table-cell">
+                      <span className="text-sm font-semibold text-neutral-900">
+                        {product.variant_count}
+                      </span>
+                      {product.active_variants < product.variant_count && (
+                        <span className="text-xs text-neutral-400 ml-1">
+                          ({product.active_variants} active)
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Stock */}
+                    <td className="px-5 py-3.5 hidden sm:table-cell">
+                      <span
+                        className={cn(
+                          'text-sm font-semibold',
+                          product.total_stock === 0
+                            ? 'text-red-600'
+                            : product.total_stock < 10
+                            ? 'text-amber-600'
+                            : 'text-neutral-900',
+                        )}
+                      >
+                        {product.total_stock}
+                      </span>
+                      <span className="text-xs text-neutral-400 ml-1">units</span>
+                    </td>
+
+                    {/* Status + toggle */}
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={product.is_active ? 'active' : 'inactive'} />
+                        <Toggle
+                          checked={product.is_active}
+                          onChange={() => handleToggle(product)}
+                        />
+                      </div>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => navigate(`/admin/products/${product.id}`)}
+                          title="View product detail"
+                          className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openEdit(product)}
+                          title="Edit product"
+                          className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8}>
+                    <EmptyState
+                      icon={Package}
+                      title={
+                        search || categoryFilter
+                          ? 'No products match your filters'
+                          : 'No products yet'
+                      }
+                      description={
+                        search || categoryFilter
+                          ? 'Try adjusting your search or category filter.'
+                          : 'Add your first product to start building your catalog.'
+                      }
+                      action={
+                        !search && !categoryFilter
+                          ? { label: 'Add Product', onClick: openCreate }
+                          : undefined
+                      }
+                    />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Create / Edit slide panel */}
+      <SlidePanel
+        open={panelOpen}
+        onClose={closePanel}
+        title={editing ? 'Edit Product' : 'Add Product'}
+        subtitle={editing ? editing.name : undefined}
+      >
+        <ProductForm
+          key={editing?.id ?? 'new'}
+          initial={
+            editing
+              ? {
+                  category_id: editing.category_id,
+                  name: editing.name,
+                  slug: editing.slug,
+                  brand: editing.brand ?? '',
+                  description: editing.description ?? '',
+                  image_url: editing.image_url ?? '',
+                  is_active: editing.is_active,
+                }
+              : undefined
+          }
+          categories={categories}
+          onSubmit={handleSubmit}
+          onCancel={closePanel}
+          submitting={submitting}
+          error={formError}
+        />
+      </SlidePanel>
     </div>
   );
 }

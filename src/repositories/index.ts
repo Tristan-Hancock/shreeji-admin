@@ -1,10 +1,37 @@
-import { supabase } from '../lib/supabase';
-import { Database } from '../types/database';
+/**
+ * Barrel re-export for all repositories.
+ *
+ * Consumers can import from this single entry point:
+ *   import { OrdersRepository, CategoriesRepository } from '../../repositories';
+ */
 
-export type Order = Database['public']['Tables']['orders']['Row'];
+// ─── Catalog ──────────────────────────────────────────────────────────────
+export { CategoriesRepository } from './categories.repository';
+export { ProductsRepository }   from './products.repository';
+export { VariantsRepository }   from './variants.repository';
+
+// ─── Types (re-export for convenience) ───────────────────────────────────
+export type {
+  Category,
+  CategoryInsert,
+  CategoryUpdate,
+  CategoryWithCount,
+  Product,
+  ProductInsert,
+  ProductUpdate,
+  ProductListItem,
+  ProductWithVariants,
+  ProductVariant,
+  VariantInsert,
+  VariantUpdate,
+} from '../types/catalog';
+
+// ─── Orders ───────────────────────────────────────────────────────────────
+import { supabase } from '../lib/supabase';
+import type { Database } from '../types/database';
+
+export type Order     = Database['public']['Tables']['orders']['Row'];
 export type OrderItem = Database['public']['Tables']['order_items']['Row'];
-export type Product = Database['public']['Tables']['products']['Row'];
-export type ProductVariant = Database['public']['Tables']['product_variants']['Row'];
 
 export const OrdersRepository = {
   async getAll() {
@@ -46,41 +73,10 @@ export const OrdersRepository = {
       .single();
     if (error) throw error;
     return data;
-  }
+  },
 };
 
-export const ProductsRepository = {
-  async getAllWithVariants() {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*, product_variants(*)');
-    if (error) throw error;
-    return data;
-  },
-
-  async updateStock(variantId: string, stockQty: number) {
-    const { data, error } = await supabase
-      .from('product_variants')
-      .update({ stock_qty: stockQty })
-      .eq('id', variantId)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  },
-
-  async toggleProductActive(id: string, isActive: boolean) {
-    const { data, error } = await supabase
-      .from('products')
-      .update({ is_active: isActive })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  }
-};
-
+// ─── Delivery Staff ───────────────────────────────────────────────────────
 export const DeliveryRepository = {
   async getDeliveryBoys() {
     const { data, error } = await supabase
@@ -89,9 +85,10 @@ export const DeliveryRepository = {
       .eq('role', 'delivery_boy');
     if (error) throw error;
     return data;
-  }
+  },
 };
 
+// ─── Pincodes ─────────────────────────────────────────────────────────────
 export const PincodeRepository = {
   async getAll() {
     const { data, error } = await supabase
@@ -100,8 +97,11 @@ export const PincodeRepository = {
     if (error) throw error;
     return data;
   },
-  
-  async update(pincode: string, updates: Database['public']['Tables']['serviceable_pincodes']['Update']) {
+
+  async update(
+    pincode: string,
+    updates: Database['public']['Tables']['serviceable_pincodes']['Update'],
+  ) {
     const { data, error } = await supabase
       .from('serviceable_pincodes')
       .update(updates)
@@ -110,5 +110,5 @@ export const PincodeRepository = {
       .single();
     if (error) throw error;
     return data;
-  }
+  },
 };

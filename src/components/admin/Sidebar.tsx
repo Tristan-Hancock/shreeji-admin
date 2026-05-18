@@ -18,13 +18,14 @@ import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard', roles: ['admin', 'delivery_boy'] },
-  { icon: ShoppingBag, label: 'Orders', path: '/admin/orders', roles: ['admin', 'delivery_boy'] },
-  { icon: Package, label: 'Products', path: '/admin/products', roles: ['admin'] },
-  { icon: ClipboardList, label: 'Inventory', path: '/admin/inventory', roles: ['admin'] },
-  { icon: Users, label: 'Delivery Boys', path: '/admin/delivery-boys', roles: ['admin'] },
-  { icon: MapPin, label: 'Pincodes', path: '/admin/pincodes', roles: ['admin'] },
-  { icon: Settings, label: 'Settings', path: '/admin/settings', roles: ['admin'] },
+  { icon: LayoutDashboard, label: 'Dashboard',     path: '/admin/dashboard',    roles: ['admin', 'delivery_boy'] },
+  { icon: ShoppingBag,    label: 'Orders',         path: '/admin/orders',       roles: ['admin', 'delivery_boy'] },
+  { icon: Package,        label: 'Products',       path: '/admin/products',     roles: ['admin'] },
+  { icon: ClipboardList,  label: 'Categories',     path: '/admin/categories',   roles: ['admin'] },
+  { icon: Truck,          label: 'Inventory',      path: '/admin/inventory',    roles: ['admin'] },
+  { icon: Users,          label: 'Delivery Boys',  path: '/admin/delivery-boys', roles: ['admin'] },
+  { icon: MapPin,         label: 'Pincodes',       path: '/admin/pincodes',     roles: ['admin'] },
+  { icon: Settings,       label: 'Settings',       path: '/admin/settings',     roles: ['admin'] },
 ];
 
 export default function Sidebar() {
@@ -48,7 +49,11 @@ export default function Sidebar() {
 
       <nav className="flex-1 space-y-1">
         {filteredItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          // Match exact path or any child route (e.g. /admin/products/:id → Products)
+          const isActive =
+            location.pathname === item.path ||
+            (item.path !== '/admin/dashboard' &&
+              location.pathname.startsWith(item.path + '/'));
           return (
             <Link
               key={item.path}

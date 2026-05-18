@@ -7,7 +7,8 @@ import {
   Check,
   X
 } from 'lucide-react';
-import { ProductsRepository } from '../../repositories';
+import { ProductsRepository } from '../../repositories/products.repository';
+import { VariantsRepository } from '../../repositories/variants.repository';
 import { cn } from '../../lib/utils';
 
 export default function Inventory() {
@@ -35,7 +36,7 @@ export default function Inventory() {
 
   const handleUpdateStock = async (variantId: string) => {
     try {
-      await ProductsRepository.updateStock(variantId, editValue);
+      await VariantsRepository.updateVariantStock(variantId, editValue);
       setEditingId(null);
       fetchData();
     } catch (error) {
@@ -43,17 +44,16 @@ export default function Inventory() {
     }
   };
 
-  const allVariants = products.flatMap(p => 
+  const allVariants = products.flatMap(p =>
     p.product_variants.map((v: any) => ({
       ...v,
       productName: p.name,
-      category: p.category
     }))
   );
 
-  const filteredVariants = allVariants.filter(v => 
+  const filteredVariants = allVariants.filter((v: any) =>
     v.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (v.variant_name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const lowStockCount = allVariants.filter(v => v.stock_qty < 10).length;
@@ -99,7 +99,7 @@ export default function Inventory() {
             <thead>
               <tr className="bg-neutral-50 border-b border-neutral-200">
                 <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Product & Variant</th>
-                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden md:table-cell">SKU</th>
                 <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Current Stock</th>
                 <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -113,12 +113,12 @@ export default function Inventory() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold">{variant.productName}</span>
-                        <span className="text-xs text-neutral-500">{variant.name}</span>
+                        <span className="text-xs text-neutral-500">{variant.variant_name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-medium px-2 py-1 bg-neutral-100 rounded-md uppercase text-neutral-600 tracking-wider">
-                        {variant.category}
+                    <td className="px-6 py-4 hidden md:table-cell">
+                      <span className="text-xs font-mono text-neutral-500">
+                        {variant.sku ?? '—'}
                       </span>
                     </td>
                     <td className="px-6 py-4">

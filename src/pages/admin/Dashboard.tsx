@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { OrdersRepository, ProductsRepository, type Order } from '../../repositories';
+import { OrdersRepository, type Order } from '../../repositories';
+import { ProductsRepository } from '../../repositories/products.repository';
 import { formatCurrency, cn } from '../../lib/utils';
 
 export default function Dashboard() {
