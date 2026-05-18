@@ -20,6 +20,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Hoist subscription ref outside the async function so the useEffect
+    // cleanup can reliably unsubscribe regardless of when initAuth resolves.
+    let subscription: ReturnType<typeof supabase.auth.onAuthStateChange>['data']['subscription'] | null = null;
+
     async function initAuth() {
       try {
         // Get initial session
@@ -32,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
           setUser(session?.user ?? null);
           if (session?.user) {
             await fetchProfile(session.user.id);
@@ -42,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         });
 
-        return () => subscription.unsubscribe();
+        subscription = data.subscription;
       } catch (error) {
         console.error('Auth initialization error:', error);
         setLoading(false);
@@ -50,6 +54,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     initAuth();
+
+    // Cleanup: unsubscribe when the component unmounts or effect re-runs.
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   async function fetchProfile(uid: string) {

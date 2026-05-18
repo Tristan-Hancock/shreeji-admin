@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
-import { 
-  Users, 
-  Plus, 
-  Phone, 
-  MapPin, 
-  Star, 
-  Truck,
+import {
+  Plus,
+  Phone,
+  Star,
   MoreVertical,
   Activity
 } from 'lucide-react';

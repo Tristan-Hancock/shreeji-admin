@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
-import { 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  ExternalLink, 
+import {
+  Search,
   MessageCircle,
   Truck,
   PackageCheck,
@@ -62,8 +59,17 @@ export default function Orders() {
   });
 
   const sendWhatsApp = (order: Order) => {
-    const message = `Hello ${order.customer_name}, your order #${order.id.slice(0, 8)} status has been updated to ${order.status.replace(/_/g, ' ')}. Summarize: ${order.total_amount}.`;
-    window.open(`https://wa.me/${order.customer_phone}?text=${encodeURIComponent(message)}`, '_blank');
+    // Ensure phone has country code for WhatsApp deep-link (default to +91 India if no + prefix)
+    const phone = order.customer_phone.startsWith('+')
+      ? order.customer_phone.replace(/\D/g, '')
+      : `91${order.customer_phone.replace(/\D/g, '')}`;
+    const statusLabel = order.status.replace(/_/g, ' ');
+    const message =
+      `Hello ${order.customer_name}, your order #${order.id.slice(0, 8)} has been updated.\n\n` +
+      `Status: ${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}\n` +
+      `Amount: ₹${order.total_amount.toFixed(2)}\n\n` +
+      `Thank you for shopping with us!`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   return (

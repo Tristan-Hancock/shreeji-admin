@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit2, 
-  Eye, 
-  EyeOff, 
-  ChevronRight,
+import {
+  Plus,
+  Search,
+  Edit2,
+  Eye,
+  EyeOff,
   Package
 } from 'lucide-react';
 import { ProductsRepository } from '../../repositories';

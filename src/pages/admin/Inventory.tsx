@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import { 
-  ClipboardList, 
-  Search, 
-  AlertTriangle, 
-  ArrowUpRight,
+import {
+  Search,
+  AlertTriangle,
   RefreshCcw,
   Edit2,
   Check,
@@ -11,7 +9,6 @@ import {
 } from 'lucide-react';
 import { ProductsRepository } from '../../repositories';
 import { cn } from '../../lib/utils';
-import { motion } from 'motion/react';
 
 export default function Inventory() {
   const [products, setProducts] = useState<any[]>([]);
