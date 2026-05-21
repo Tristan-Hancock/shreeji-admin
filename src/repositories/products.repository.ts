@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { cachedFetch, invalidate } from '../lib/cache';
 import type {
   ProductInsert,
   ProductUpdate,
@@ -12,74 +13,72 @@ export interface ProductFilters {
   activeOnly?: boolean;
 }
 
+function productsCacheKey(filters: ProductFilters): string {
+  return `products:list:${filters.categoryId ?? ''}:${filters.search ?? ''}:${filters.activeOnly ?? ''}`;
+}
+
 export const ProductsRepository = {
-  /**
-   * Return a flat list of products enriched with variant aggregates
-   * (count, total stock, active variant count).  Uses a partial variant
-   * select to minimise payload on the list view.
-   */
   async listProducts(filters: ProductFilters = {}): Promise<ProductListItem[]> {
-    let query = supabase
-      .from('products')
-      .select(`
-        *,
-        categories(id, name, slug),
-        product_variants(id, stock_qty, is_active)
-      `)
-      .order('created_at', { ascending: false });
+    return cachedFetch(productsCacheKey(filters), async () => {
+      let query = supabase
+        .from('products')
+        .select(`
+          *,
+          categories(id, name, slug),
+          product_variants(id, stock_qty, is_active)
+        `)
+        .order('created_at', { ascending: false });
 
-    if (filters.categoryId) {
-      query = query.eq('category_id', filters.categoryId);
-    }
-    if (filters.search) {
-      query = query.ilike('name', `%${filters.search}%`);
-    }
-    if (filters.activeOnly) {
-      query = query.eq('is_active', true);
-    }
+      if (filters.categoryId) {
+        query = query.eq('category_id', filters.categoryId);
+      }
+      if (filters.search) {
+        query = query.ilike('name', `%${filters.search}%`);
+      }
+      if (filters.activeOnly) {
+        query = query.eq('is_active', true);
+      }
 
-    const { data, error } = await query;
-    if (error) throw error;
+      const { data, error } = await query;
+      if (error) throw error;
 
-    return (data ?? []).map((row) => {
-      const variants = (row.product_variants as any[]) ?? [];
-      return {
-        ...row,
-        variant_count: variants.length,
-        total_stock: variants.reduce((s: number, v: any) => s + (v.stock_qty ?? 0), 0),
-        active_variants: variants.filter((v: any) => v.is_active).length,
-      } as ProductListItem;
+      return (data ?? []).map((row) => {
+        const variants = (row.product_variants as any[]) ?? [];
+        return {
+          ...row,
+          variant_count: variants.length,
+          total_stock: variants.reduce((s: number, v: any) => s + (v.stock_qty ?? 0), 0),
+          active_variants: variants.filter((v: any) => v.is_active).length,
+        } as ProductListItem;
+      });
     });
   },
 
-  /**
-   * Fetch a single product with ALL variant fields — used on the detail page.
-   */
   async getProduct(id: string): Promise<ProductWithVariants> {
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        categories(id, name, slug),
-        product_variants(*)
-      `)
-      .eq('id', id)
-      .single();
+    return cachedFetch(`products:${id}`, async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories(id, name, slug),
+          product_variants(*)
+        `)
+        .eq('id', id)
+        .single();
 
-    if (error) throw error;
-    return data as ProductWithVariants;
+      if (error) throw error;
+      return data as ProductWithVariants;
+    });
   },
 
-  /**
-   * Legacy helper kept for Dashboard / Inventory pages.
-   * Returns all products with full variant arrays.
-   */
   async getAllWithVariants() {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*, product_variants(*)');
-    if (error) throw error;
-    return data ?? [];
+    return cachedFetch('products:allWithVariants', async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*, product_variants(*)');
+      if (error) throw error;
+      return data ?? [];
+    });
   },
 
   async createProduct(payload: ProductInsert) {
@@ -90,6 +89,7 @@ export const ProductsRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('products');
     return data;
   },
 
@@ -102,6 +102,7 @@ export const ProductsRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('products');
     return data;
   },
 
@@ -114,6 +115,7 @@ export const ProductsRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('products');
     return data;
   },
 
@@ -123,5 +125,6 @@ export const ProductsRepository = {
     });
 
     if (error) throw error;
+    invalidate('products');
   },
 };

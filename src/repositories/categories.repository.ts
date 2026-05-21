@@ -1,38 +1,38 @@
 import { supabase } from '../lib/supabase';
+import { cachedFetch, invalidate } from '../lib/cache';
 import type { CategoryInsert, CategoryUpdate, CategoryWithCount } from '../types/catalog';
 
 export const CategoriesRepository = {
-  /**
-   * List all categories ordered by name, with a product count for each.
-   * Uses a nested select to pull product IDs then counts client-side to
-   * avoid needing a database view or RPC.
-   */
   async listCategories(): Promise<CategoryWithCount[]> {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*, products(id)')
-      .order('name');
+    return cachedFetch('categories:list', async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*, products(id)')
+        .order('name');
 
-    if (error) throw error;
+      if (error) throw error;
 
-    return (data ?? []).map((row) => {
-      const { products, ...category } = row as any;
-      return {
-        ...category,
-        product_count: Array.isArray(products) ? products.length : 0,
-      } as CategoryWithCount;
+      return (data ?? []).map((row) => {
+        const { products, ...category } = row as any;
+        return {
+          ...category,
+          product_count: Array.isArray(products) ? products.length : 0,
+        } as CategoryWithCount;
+      });
     });
   },
 
   async getCategory(id: string) {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('id', id)
-      .single();
+    return cachedFetch(`categories:${id}`, async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    });
   },
 
   async createCategory(payload: CategoryInsert) {
@@ -43,6 +43,7 @@ export const CategoriesRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('categories');
     return data;
   },
 
@@ -55,6 +56,7 @@ export const CategoriesRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('categories');
     return data;
   },
 
@@ -67,6 +69,7 @@ export const CategoriesRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('categories');
     return data;
   },
 
@@ -76,5 +79,6 @@ export const CategoriesRepository = {
     });
 
     if (error) throw error;
+    invalidate('categories');
   },
 };
