@@ -13,9 +13,10 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { OrdersRepository, type Order } from '../../repositories';
+import { OrdersRepository, type OrderWithItems } from '../../repositories';
 import { ProductsRepository } from '../../repositories/products.repository';
 import { formatCurrency, cn } from '../../lib/utils';
+import StatusBadge from '../../components/ui/StatusBadge';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -25,13 +26,13 @@ export default function Dashboard() {
     revenue: 0,
     lowStock: 0
   });
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [recentOrders, setRecentOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const orders = await OrdersRepository.getAll();
+        const orders = await OrdersRepository.listAdminOrders();
         const products = await ProductsRepository.getAllWithVariants();
         
         const today = new Date().toDateString();
@@ -120,16 +121,11 @@ export default function Dashboard() {
                 <div key={order.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-neutral-50 transition-colors border border-transparent hover:border-neutral-100">
                   <div className="flex flex-col">
                     <span className="font-semibold text-sm">#{order.id.slice(0, 8)}</span>
-                    <span className="text-xs text-neutral-500">{order.customer_name}</span>
+                    <span className="text-xs text-neutral-500">{order.customer_name ?? '—'}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-sm font-bold">{formatCurrency(order.total_amount)}</span>
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                      order.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                    )}>
-                      {order.status}
-                    </span>
+                    <span className="text-sm font-bold">{formatCurrency(order.total_amount ?? 0)}</span>
+                    <StatusBadge status={order.status ?? 'pending'} />
                   </div>
                 </div>
               ))

@@ -9,6 +9,7 @@ import {
   XCircle,
   AlertCircle,
   AlertTriangle,
+  Archive,
   Package,
   ChevronDown,
 } from 'lucide-react';
@@ -19,9 +20,11 @@ import type { ProductWithVariants, ProductVariant, VariantInsert, VariantUpdate 
 import { UNIT_TYPES } from '../../types/catalog';
 import { cn, formatCurrency } from '../../lib/utils';
 import StatusBadge from '../../components/ui/StatusBadge';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import ImagePreview from '../../components/ui/ImagePreview';
 import { Skeleton, TableRowSkeleton } from '../../components/ui/LoadingSkeleton';
 import EmptyState from '../../components/ui/EmptyState';
+import { useToast } from '../../components/ui/Toast';
 
 // ─── Toggle ───────────────────────────────────────────────────────────────
 
@@ -409,6 +412,7 @@ function StockEditor({ variantId, current, onSave }: StockEditorProps) {
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [product, setProduct] = useState<ProductWithVariants | null>(null);
   const [loading, setLoading] = useState(true);
@@ -418,6 +422,9 @@ export default function ProductDetail() {
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [variantError, setVariantError] = useState<string | null>(null);
+
+  const [archivingProduct, setArchivingProduct] = useState(false);
+  const [archivingVariant, setArchivingVariant] = useState<ProductVariant | null>(null);
 
   // ── Load ─────────────────────────────────────────────────────────────────
 
@@ -568,6 +575,45 @@ export default function ProductDetail() {
     }
   }
 
+  // ── Archive product ────────────────────────────────────────────────────────
+
+  async function handleArchiveProduct() {
+    if (!product) return;
+    try {
+      await ProductsRepository.archiveProduct(product.id);
+      setArchivingProduct(false);
+      toast('success', 'Product archived');
+      navigate('/admin/products');
+    } catch (err: any) {
+      setArchivingProduct(false);
+      toast('error', err?.message ?? 'Failed to archive product');
+    }
+  }
+
+  // ── Archive variant ───────────────────────────────────────────────────────
+
+  async function handleArchiveVariant() {
+    if (!archivingVariant) return;
+    try {
+      await VariantsRepository.archiveVariant(archivingVariant.id);
+      setProduct((p) =>
+        p
+          ? {
+              ...p,
+              product_variants: p.product_variants.map((v) =>
+                v.id === archivingVariant.id ? { ...v, is_active: false } : v,
+              ),
+            }
+          : p,
+      );
+      toast('success', 'Variant archived');
+      setArchivingVariant(null);
+    } catch (err: any) {
+      setArchivingVariant(null);
+      toast('error', err?.message ?? 'Failed to archive variant');
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (notFound) {
@@ -641,6 +687,15 @@ export default function ProductDetail() {
                 <div className="flex items-center gap-2">
                   <StatusBadge status={product.is_active ? 'active' : 'inactive'} />
                   <Toggle checked={product.is_active} onChange={handleProductToggle} />
+                  {product.is_active && (
+                    <button
+                      onClick={() => setArchivingProduct(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                      Archive
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -797,9 +852,9 @@ export default function ProductDetail() {
                         </div>
                       </td>
 
-                      {/* Edit */}
+                      {/* Actions */}
                       <td className="px-5 py-4">
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-1">
                           <button
                             onClick={() => openEditVariant(variant)}
                             className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -807,6 +862,15 @@ export default function ProductDetail() {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
+                          {variant.is_active && (
+                            <button
+                              onClick={() => setArchivingVariant(variant)}
+                              className="p-2 text-neutral-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                              title="Archive variant"
+                            >
+                              <Archive className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -845,6 +909,28 @@ export default function ProductDetail() {
           error={variantError}
         />
       </SlidePanel>
+
+      {/* Archive product confirmation */}
+      <ConfirmDialog
+        open={archivingProduct}
+        onClose={() => setArchivingProduct(false)}
+        onConfirm={handleArchiveProduct}
+        title="Archive Product?"
+        description="This product will be hidden from the storefront. Historical orders will remain preserved."
+        confirmLabel="Archive Product"
+        variant="warning"
+      />
+
+      {/* Archive variant confirmation */}
+      <ConfirmDialog
+        open={Boolean(archivingVariant)}
+        onClose={() => setArchivingVariant(null)}
+        onConfirm={handleArchiveVariant}
+        title="Archive Variant?"
+        description="This variant will no longer be purchasable. Historical orders will remain preserved."
+        confirmLabel="Archive Variant"
+        variant="warning"
+      />
     </div>
   );
 }

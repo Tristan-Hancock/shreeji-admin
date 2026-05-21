@@ -69,4 +69,12 @@ export const CategoriesRepository = {
     if (error) throw error;
     return data;
   },
+
+  async deleteCategory(id: string) {
+    const { error } = await supabase.rpc('delete_category_safe', {
+      category_uuid: id,
+    });
+
+    if (error) throw error;
+  },
 };

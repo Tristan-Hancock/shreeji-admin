@@ -5,6 +5,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
+import { ToastProvider } from './components/ui/Toast';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
+      <ToastProvider>
         <Routes>
           <Route path="/admin/login" element={<Login />} />
           
@@ -42,6 +44,7 @@ export default function App() {
 
           <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
         </Routes>
+      </ToastProvider>
       </AuthProvider>
     </Router>
   );

@@ -33,34 +33,68 @@ import type { Database } from '../types/database';
 export type Order     = Database['public']['Tables']['orders']['Row'];
 export type OrderItem = Database['public']['Tables']['order_items']['Row'];
 
+export type OrderWithItems = Order & { order_items: OrderItem[] };
+
 export const OrdersRepository = {
-  async getAll() {
+  async listAdminOrders(): Promise<OrderWithItems[]> {
     const { data, error } = await supabase
       .from('orders')
-      .select('*, order_items(*)')
+      .select(`
+        *,
+        order_items (*)
+      `)
       .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
+
+    if (error) {
+      console.error('[OrdersRepository.listAdminOrders] query error:', error);
+      throw error;
+    }
+
+    console.log('[OrdersRepository.listAdminOrders] fetched', data?.length ?? 0, 'orders');
+
+    return (data ?? []) as OrderWithItems[];
   },
 
-  async getById(id: string) {
+  async getAdminOrder(id: string): Promise<OrderWithItems> {
     const { data, error } = await supabase
       .from('orders')
-      .select('*, order_items(*)')
+      .select(`
+        *,
+        order_items (*)
+      `)
       .eq('id', id)
       .single();
-    if (error) throw error;
-    return data;
+
+    if (error) {
+      console.error('[OrdersRepository.getAdminOrder] query error:', error);
+      throw error;
+    }
+
+    return data as OrderWithItems;
   },
 
-  async updateStatus(id: string, status: Order['status']) {
+  /** @deprecated Use listAdminOrders instead */
+  async getAll(): Promise<OrderWithItems[]> {
+    return this.listAdminOrders();
+  },
+
+  /** @deprecated Use getAdminOrder instead */
+  async getById(id: string): Promise<OrderWithItems> {
+    return this.getAdminOrder(id);
+  },
+
+  async updateStatus(id: string, status: string) {
     const { data, error } = await supabase
       .from('orders')
       .update({ status })
       .eq('id', id)
       .select()
       .single();
-    if (error) throw error;
+
+    if (error) {
+      console.error('[OrdersRepository.updateStatus] error:', error);
+      throw error;
+    }
     return data;
   },
 
@@ -71,7 +105,11 @@ export const OrdersRepository = {
       .eq('id', id)
       .select()
       .single();
-    if (error) throw error;
+
+    if (error) {
+      console.error('[OrdersRepository.assignDeliveryBoy] error:', error);
+      throw error;
+    }
     return data;
   },
 };
