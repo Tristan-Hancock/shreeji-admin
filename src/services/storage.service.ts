@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 
-const BUCKET = 'product-images';
+const BUCKET_PRODUCTS = 'Product Images';
+const BUCKET_CATEGORIES = 'Category Images';
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -33,21 +34,21 @@ function sanitizeFilename(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
-function buildStoragePath(folder: string, file: File): string {
+function buildStoragePath(file: File): string {
   const ext = file.name.split('.').pop() ?? 'jpg';
   const baseName = file.name.replace(/\.[^.]+$/, '');
   const sanitized = sanitizeFilename(baseName);
   const uuid = crypto.randomUUID();
-  return `${folder}/${uuid}-${sanitized}.${ext}`;
+  return `${uuid}-${sanitized}.${ext}`;
 }
 
-async function uploadImage(folder: string, file: File): Promise<string> {
+async function uploadImage(bucket: string, file: File): Promise<string> {
   validateImageFile(file);
 
-  const path = buildStoragePath(folder, file);
+  const path = buildStoragePath(file);
 
   const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
+    .from(bucket)
     .upload(path, file, {
       cacheControl: '31536000',
       upsert: false,
@@ -58,11 +59,11 @@ async function uploadImage(folder: string, file: File): Promise<string> {
     throw new Error(`Upload failed: ${uploadError.message}`);
   }
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 }
 
 export const StorageService = {
-  uploadCategoryImage: (file: File): Promise<string> => uploadImage('categories', file),
-  uploadProductImage: (file: File): Promise<string> => uploadImage('products', file),
+  uploadCategoryImage: (file: File): Promise<string> => uploadImage(BUCKET_CATEGORIES, file),
+  uploadProductImage: (file: File): Promise<string> => uploadImage(BUCKET_PRODUCTS, file),
 };
