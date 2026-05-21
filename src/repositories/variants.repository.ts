@@ -48,4 +48,12 @@ export const VariantsRepository = {
     if (error) throw error;
     return data as ProductVariant;
   },
+
+  async archiveVariant(id: string) {
+    const { error } = await supabase.rpc('archive_variant', {
+      variant_uuid: id,
+    });
+
+    if (error) throw error;
+  },
 };

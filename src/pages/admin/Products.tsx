@@ -5,6 +5,7 @@ import {
   Search,
   Edit2,
   Eye,
+  Archive,
   Package,
   AlertCircle,
   XCircle,
@@ -17,9 +18,13 @@ import type { ProductListItem, Category } from '../../types/catalog';
 import type { ProductInsert, ProductUpdate } from '../../types/catalog';
 import { cn, formatCurrency, generateSlug } from '../../lib/utils';
 import StatusBadge from '../../components/ui/StatusBadge';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import EmptyState from '../../components/ui/EmptyState';
 import { TableRowSkeleton } from '../../components/ui/LoadingSkeleton';
 import ImagePreview from '../../components/ui/ImagePreview';
+import ImageUpload from '../../components/ui/ImageUpload';
+import { StorageService } from '../../services/storage.service';
+import { useToast } from '../../components/ui/Toast';
 
 // ─── Shared toggle ────────────────────────────────────────────────────────
 
@@ -217,18 +222,12 @@ function ProductForm({
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
           Image
         </p>
-        <input
-          type="url"
-          value={values.image_url}
-          onChange={(e) => setValues((p) => ({ ...p, image_url: e.target.value }))}
-          placeholder="https://..."
-          className={field}
+        <ImageUpload
+          value={values.image_url || null}
+          onChange={(url) => setValues((p) => ({ ...p, image_url: url ?? '' }))}
+          onUpload={StorageService.uploadProductImage}
+          aspectRatio="16/9"
         />
-        {values.image_url && (
-          <div className="mt-2 rounded-xl overflow-hidden h-32 bg-neutral-100">
-            <ImagePreview url={values.image_url} alt="Product" className="w-full h-full" />
-          </div>
-        )}
       </div>
 
       {/* Section: Visibility */}
@@ -322,6 +321,7 @@ function SlidePanel({ open, onClose, title, subtitle, children }: SlidePanelProp
 
 export default function Products() {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -329,11 +329,14 @@ export default function Products() {
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState<ProductListItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [archiving, setArchiving] = useState<ProductListItem | null>(null);
 
   // ── Data ─────────────────────────────────────────────────────────────────
 
@@ -343,14 +346,15 @@ export default function Products() {
       const data = await ProductsRepository.listProducts({
         search: search || undefined,
         categoryId: categoryFilter || undefined,
+        activeOnly: !showArchived ? undefined : undefined,
       });
-      setProducts(data);
+      setProducts(showArchived ? data : data.filter((p) => p.is_active));
     } catch (err) {
       console.error('Failed to load products:', err);
     } finally {
       setLoading(false);
     }
-  }, [search, categoryFilter]);
+  }, [search, categoryFilter, showArchived]);
 
   useEffect(() => {
     fetchProducts();
@@ -433,6 +437,21 @@ export default function Products() {
     }
   }
 
+  // ── Archive ──────────────────────────────────────────────────────────────
+
+  async function handleArchive() {
+    if (!archiving) return;
+    try {
+      await ProductsRepository.archiveProduct(archiving.id);
+      setArchiving(null);
+      toast('success', 'Product archived');
+      await fetchProducts();
+    } catch (err: any) {
+      setArchiving(null);
+      toast('error', err?.message ?? 'Failed to archive product');
+    }
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -455,7 +474,7 @@ export default function Products() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
           <input
@@ -481,6 +500,15 @@ export default function Products() {
           </select>
           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
         </div>
+        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+            className="rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
+          />
+          <span className="text-neutral-600 font-medium">Show Archived</span>
+        </label>
       </div>
 
       {/* Table */}
@@ -616,6 +644,15 @@ export default function Products() {
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
+                        {product.is_active && (
+                          <button
+                            onClick={() => setArchiving(product)}
+                            title="Archive product"
+                            className="p-2 text-neutral-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          >
+                            <Archive className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -678,6 +715,17 @@ export default function Products() {
           error={formError}
         />
       </SlidePanel>
+
+      {/* Archive confirmation */}
+      <ConfirmDialog
+        open={Boolean(archiving)}
+        onClose={() => setArchiving(null)}
+        onConfirm={handleArchive}
+        title="Archive Product?"
+        description="This product will be hidden from the storefront. Historical orders will remain preserved."
+        confirmLabel="Archive Product"
+        variant="warning"
+      />
     </div>
   );
 }

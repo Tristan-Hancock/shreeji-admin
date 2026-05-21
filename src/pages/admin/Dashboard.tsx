@@ -13,55 +13,83 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { OrdersRepository, type Order } from '../../repositories';
+import { OrdersRepository, type OrderWithItems } from '../../repositories';
 import { ProductsRepository } from '../../repositories/products.repository';
 import { formatCurrency, cn } from '../../lib/utils';
+import StatusBadge from '../../components/ui/StatusBadge';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
+    totalOrders: 0,
     todayOrders: 0,
     pendingOrders: 0,
     deliveredOrders: 0,
     revenue: 0,
     lowStock: 0
   });
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [recentOrders, setRecentOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
-      try {
-        const orders = await OrdersRepository.getAll();
-        const products = await ProductsRepository.getAllWithVariants();
-        
-        const today = new Date().toDateString();
-        const todayOrders = orders.filter(o => new Date(o.created_at).toDateString() === today);
-        const pending = orders.filter(o => o.status === 'pending' || o.status === 'accepted').length;
-        const delivered = orders.filter(o => o.status === 'delivered').length;
-        const revenue = orders
-          .filter(o => o.status === 'delivered')
-          .reduce((sum, o) => sum + o.total_amount, 0);
+      setFetchError(null);
 
-        let lowStockCount = 0;
+      let orders: OrderWithItems[] = [];
+      try {
+        orders = await OrdersRepository.listAdminOrders();
+      } catch (err: any) {
+        console.error('Dashboard: failed to load orders:', err);
+        setFetchError(err?.message ?? 'Failed to load orders');
+      }
+
+      let lowStockCount = 0;
+      try {
+        const products = await ProductsRepository.getAllWithVariants();
         products.forEach(p => {
-          p.product_variants.forEach(v => {
+          (p.product_variants ?? []).forEach((v: any) => {
             if (v.stock_qty < 10) lowStockCount++;
           });
         });
-
-        setStats({
-          todayOrders: todayOrders.length,
-          pendingOrders: pending,
-          deliveredOrders: delivered,
-          revenue,
-          lowStock: lowStockCount
-        });
-        setRecentOrders(orders.slice(0, 5));
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
+      } catch (err) {
+        console.error('Dashboard: failed to load products:', err);
       }
+
+      // Debug: log actual status values from DB so mismatches are visible
+      const statusCounts: Record<string, number> = {};
+      orders.forEach(o => {
+        const s = o.status ?? '(null)';
+        statusCounts[s] = (statusCounts[s] ?? 0) + 1;
+      });
+      console.log('[Dashboard] order status breakdown:', statusCounts);
+
+      const today = new Date().toDateString();
+      const todayOrders = orders.filter(o => {
+        try { return new Date(o.created_at).toDateString() === today; }
+        catch { return false; }
+      });
+
+      const s = (v: string | null | undefined) => (v ?? '').toLowerCase().trim();
+
+      const pending = orders.filter(o => {
+        const st = s(o.status);
+        return st === 'pending' || st === 'accepted' || st === 'packed' || st === 'out_for_delivery';
+      }).length;
+      const delivered = orders.filter(o => s(o.status) === 'delivered').length;
+      const revenue = orders
+        .filter(o => s(o.status) === 'delivered')
+        .reduce((sum, o) => sum + (o.total_amount ?? 0), 0);
+
+      setStats({
+        totalOrders: orders.length,
+        todayOrders: todayOrders.length,
+        pendingOrders: pending,
+        deliveredOrders: delivered,
+        revenue,
+        lowStock: lowStockCount,
+      });
+      setRecentOrders(orders.slice(0, 5));
+      setLoading(false);
     }
     fetchData();
   }, []);
@@ -71,6 +99,7 @@ export default function Dashboard() {
   }
 
   const widgets = [
+    { label: "Total Orders", value: stats.totalOrders, icon: ShoppingBag, color: "text-neutral-700", bg: "bg-neutral-100" },
     { label: "Today's Orders", value: stats.todayOrders, icon: ShoppingBag, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Pending Orders", value: stats.pendingOrders, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
     { label: "Total Delivered", value: stats.deliveredOrders, icon: CheckCircle2, color: "text-blue-600", bg: "bg-blue-50" },
@@ -85,7 +114,14 @@ export default function Dashboard() {
         <p className="text-neutral-500">Real-time operational summary</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      {fetchError && (
+        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          <AlertTriangle className="w-5 h-5 shrink-0" />
+          <span>Orders failed to load: {fetchError}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {widgets.map((widget, i) => (
           <motion.div
             key={i}
@@ -120,16 +156,11 @@ export default function Dashboard() {
                 <div key={order.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-neutral-50 transition-colors border border-transparent hover:border-neutral-100">
                   <div className="flex flex-col">
                     <span className="font-semibold text-sm">#{order.id.slice(0, 8)}</span>
-                    <span className="text-xs text-neutral-500">{order.customer_name}</span>
+                    <span className="text-xs text-neutral-500">{order.customer_name ?? '—'}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-sm font-bold">{formatCurrency(order.total_amount)}</span>
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                      order.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                    )}>
-                      {order.status}
-                    </span>
+                    <span className="text-sm font-bold">{formatCurrency(order.total_amount ?? 0)}</span>
+                    <StatusBadge status={order.status ?? 'pending'} />
                   </div>
                 </div>
               ))

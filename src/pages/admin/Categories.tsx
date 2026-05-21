@@ -1,13 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Search, Edit2, Grid3X3, AlertCircle } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Grid3X3, AlertCircle } from 'lucide-react';
 import { CategoriesRepository } from '../../repositories/categories.repository';
 import type { CategoryWithCount } from '../../types/catalog';
 import { cn, generateSlug } from '../../lib/utils';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import EmptyState from '../../components/ui/EmptyState';
 import { CardSkeleton } from '../../components/ui/LoadingSkeleton';
 import ImagePreview from '../../components/ui/ImagePreview';
+import ImageUpload from '../../components/ui/ImageUpload';
+import { StorageService } from '../../services/storage.service';
+import { useToast } from '../../components/ui/Toast';
 
 // ─── Toggle switch (shared between form and cards) ────────────────────────
 
@@ -127,28 +131,18 @@ function CategoryForm({ initial, onSubmit, onCancel, submitting, error }: Catego
         </p>
       </div>
 
-      {/* Image URL */}
+      {/* Image */}
       <div>
         <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
-          Image URL{' '}
+          Image{' '}
           <span className="font-normal text-neutral-400">(optional)</span>
         </label>
-        <input
-          type="url"
-          value={values.image_url}
-          onChange={(e) => setValues((p) => ({ ...p, image_url: e.target.value }))}
-          placeholder="https://..."
-          className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm transition-shadow"
+        <ImageUpload
+          value={values.image_url || null}
+          onChange={(url) => setValues((p) => ({ ...p, image_url: url ?? '' }))}
+          onUpload={StorageService.uploadCategoryImage}
+          aspectRatio="16/9"
         />
-        {values.image_url && (
-          <div className="mt-2 rounded-xl overflow-hidden h-28 bg-neutral-100">
-            <ImagePreview
-              url={values.image_url}
-              alt="Category preview"
-              className="w-full h-full"
-            />
-          </div>
-        )}
       </div>
 
       {/* Active toggle */}
@@ -190,9 +184,10 @@ interface CategoryCardProps {
   category: CategoryWithCount;
   onEdit: (c: CategoryWithCount) => void;
   onToggle: (c: CategoryWithCount) => void;
+  onDelete: (c: CategoryWithCount) => void;
 }
 
-function CategoryCard({ category, onEdit, onToggle }: CategoryCardProps) {
+function CategoryCard({ category, onEdit, onToggle, onDelete }: CategoryCardProps) {
   return (
     <div
       className={cn(
@@ -226,13 +221,22 @@ function CategoryCard({ category, onEdit, onToggle }: CategoryCardProps) {
             {category.product_count}{' '}
             {category.product_count === 1 ? 'product' : 'products'}
           </span>
-          <button
-            onClick={() => onEdit(category)}
-            className="flex items-center gap-1 text-xs font-semibold text-neutral-400 hover:text-emerald-600 transition-colors"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-            Edit
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onDelete(category)}
+              className="flex items-center gap-1 text-xs font-semibold text-neutral-400 hover:text-red-600 transition-colors"
+              title="Delete category"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onEdit(category)}
+              className="flex items-center gap-1 text-xs font-semibold text-neutral-400 hover:text-emerald-600 transition-colors"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              Edit
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -242,6 +246,7 @@ function CategoryCard({ category, onEdit, onToggle }: CategoryCardProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 export default function Categories() {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<CategoryWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -250,6 +255,8 @@ export default function Categories() {
   const [editing, setEditing] = useState<CategoryWithCount | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [deleting, setDeleting] = useState<CategoryWithCount | null>(null);
 
   // ── Data loading ────────────────────────────────────────────────────────
 
@@ -339,6 +346,22 @@ export default function Categories() {
     }
   }
 
+  // ── Delete ──────────────────────────────────────────────────────────────
+
+  async function handleDelete() {
+    if (!deleting) return;
+    try {
+      await CategoriesRepository.deleteCategory(deleting.id);
+      setDeleting(null);
+      toast('success', 'Category deleted');
+      await fetchCategories();
+    } catch (err: any) {
+      setDeleting(null);
+      const msg = err?.message ?? 'Failed to delete category';
+      toast('error', msg);
+    }
+  }
+
   // ── Derived state ────────────────────────────────────────────────────────
 
   const filtered = categories.filter(
@@ -395,6 +418,7 @@ export default function Categories() {
               category={cat}
               onEdit={openEdit}
               onToggle={handleToggle}
+              onDelete={setDeleting}
             />
           ))}
         </div>
@@ -436,6 +460,17 @@ export default function Categories() {
           error={formError}
         />
       </Modal>
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        onClose={() => setDeleting(null)}
+        onConfirm={handleDelete}
+        title="Delete Category?"
+        description="This will permanently remove the category if no products are attached. This action cannot be undone."
+        confirmLabel="Delete Category"
+        variant="danger"
+      />
     </div>
   );
 }

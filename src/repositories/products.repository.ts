@@ -116,4 +116,12 @@ export const ProductsRepository = {
     if (error) throw error;
     return data;
   },
+
+  async archiveProduct(id: string) {
+    const { error } = await supabase.rpc('archive_product', {
+      product_uuid: id,
+    });
+
+    if (error) throw error;
+  },
 };
