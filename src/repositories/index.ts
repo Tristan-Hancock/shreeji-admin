@@ -28,6 +28,7 @@ export type {
 
 // ─── Orders ───────────────────────────────────────────────────────────────
 import { supabase } from '../lib/supabase';
+import { cachedFetch, invalidate } from '../lib/cache';
 import type { Database } from '../types/database';
 
 export type Order     = Database['public']['Tables']['orders']['Row'];
@@ -37,50 +38,42 @@ export type OrderWithItems = Order & { order_items: OrderItem[] };
 
 export const OrdersRepository = {
   async listAdminOrders(): Promise<OrderWithItems[]> {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (*)
-      `)
-      .order('created_at', { ascending: false });
+    return cachedFetch('orders:all', async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (*)
+        `)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('[OrdersRepository.listAdminOrders] query error:', error);
-      throw error;
-    }
+      if (error) {
+        console.error('[OrdersRepository.listAdminOrders] query error:', error);
+        throw error;
+      }
 
-    console.log('[OrdersRepository.listAdminOrders] fetched', data?.length ?? 0, 'orders');
-
-    return (data ?? []) as OrderWithItems[];
+      return (data ?? []) as OrderWithItems[];
+    });
   },
 
   async getAdminOrder(id: string): Promise<OrderWithItems> {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (*)
-      `)
-      .eq('id', id)
-      .single();
+    return cachedFetch(`orders:${id}`, async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (*)
+        `)
+        .eq('id', id)
+        .single();
 
-    if (error) {
-      console.error('[OrdersRepository.getAdminOrder] query error:', error);
-      throw error;
-    }
+      if (error) {
+        console.error('[OrdersRepository.getAdminOrder] query error:', error);
+        throw error;
+      }
 
-    return data as OrderWithItems;
-  },
-
-  /** @deprecated Use listAdminOrders instead */
-  async getAll(): Promise<OrderWithItems[]> {
-    return this.listAdminOrders();
-  },
-
-  /** @deprecated Use getAdminOrder instead */
-  async getById(id: string): Promise<OrderWithItems> {
-    return this.getAdminOrder(id);
+      return data as OrderWithItems;
+    });
   },
 
   async updateStatus(id: string, status: string) {
@@ -95,6 +88,7 @@ export const OrdersRepository = {
       console.error('[OrdersRepository.updateStatus] error:', error);
       throw error;
     }
+    invalidate('orders');
     return data;
   },
 
@@ -110,6 +104,7 @@ export const OrdersRepository = {
       console.error('[OrdersRepository.assignDeliveryBoy] error:', error);
       throw error;
     }
+    invalidate('orders');
     return data;
   },
 };
@@ -117,23 +112,27 @@ export const OrdersRepository = {
 // ─── Delivery Staff ───────────────────────────────────────────────────────
 export const DeliveryRepository = {
   async getDeliveryBoys() {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('role', 'delivery_boy');
-    if (error) throw error;
-    return data;
+    return cachedFetch('delivery:all', async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'delivery_boy');
+      if (error) throw error;
+      return data;
+    });
   },
 };
 
 // ─── Pincodes ─────────────────────────────────────────────────────────────
 export const PincodeRepository = {
   async getAll() {
-    const { data, error } = await supabase
-      .from('serviceable_pincodes')
-      .select('*');
-    if (error) throw error;
-    return data;
+    return cachedFetch('pincodes:all', async () => {
+      const { data, error } = await supabase
+        .from('serviceable_pincodes')
+        .select('*');
+      if (error) throw error;
+      return data;
+    });
   },
 
   async update(
@@ -147,6 +146,7 @@ export const PincodeRepository = {
       .select()
       .single();
     if (error) throw error;
+    invalidate('pincodes');
     return data;
   },
 };
