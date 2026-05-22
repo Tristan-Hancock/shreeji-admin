@@ -56,6 +56,26 @@ export const OrdersRepository = {
     });
   },
 
+  async listPendingOrders(): Promise<OrderWithItems[]> {
+    return cachedFetch('orders:pending', async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (*)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[OrdersRepository.listPendingOrders] query error:', error);
+        throw error;
+      }
+
+      return (data ?? []) as OrderWithItems[];
+    });
+  },
+
   async getAdminOrder(id: string): Promise<OrderWithItems> {
     return cachedFetch(`orders:${id}`, async () => {
       const { data, error } = await supabase
@@ -86,22 +106,6 @@ export const OrdersRepository = {
 
     if (error) {
       console.error('[OrdersRepository.updateStatus] error:', error);
-      throw error;
-    }
-    invalidate('orders');
-    return data;
-  },
-
-  async assignDeliveryBoy(id: string, deliveryBoyId: string) {
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ delivery_boy_id: deliveryBoyId })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[OrdersRepository.assignDeliveryBoy] error:', error);
       throw error;
     }
     invalidate('orders');

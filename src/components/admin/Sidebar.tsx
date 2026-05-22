@@ -18,14 +18,18 @@ import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard',     path: '/admin/dashboard',    roles: ['admin', 'delivery_boy'] },
-  { icon: ShoppingBag,    label: 'Orders',         path: '/admin/orders',       roles: ['admin', 'delivery_boy'] },
+  // Admin Only
+  { icon: LayoutDashboard, label: 'Dashboard',     path: '/admin/dashboard',    roles: ['admin'] },
+  { icon: ShoppingBag,    label: 'Orders',         path: '/admin/orders',       roles: ['admin'] },
   { icon: Package,        label: 'Products',       path: '/admin/products',     roles: ['admin'] },
   { icon: ClipboardList,  label: 'Categories',     path: '/admin/categories',   roles: ['admin'] },
   { icon: Truck,          label: 'Inventory',      path: '/admin/inventory',    roles: ['admin'] },
   { icon: Users,          label: 'Delivery Boys',  path: '/admin/delivery-boys', roles: ['admin'] },
   { icon: MapPin,         label: 'Pincodes',       path: '/admin/pincodes',     roles: ['admin'] },
   { icon: Settings,       label: 'Settings',       path: '/admin/settings',     roles: ['admin'] },
+
+  // Delivery Boy Only
+  { icon: ShoppingBag,    label: 'My Deliveries',  path: '/delivery/orders',    roles: ['delivery_boy'] },
 ];
 
 export default function Sidebar() {

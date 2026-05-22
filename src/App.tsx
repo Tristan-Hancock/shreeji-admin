@@ -7,6 +7,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './hooks/useAuth';
 import { ToastProvider } from './components/ui/Toast';
 import ProtectedRoute from './components/ProtectedRoute';
+import RequireAdmin from './components/RequireAdmin';
+import RequireDeliveryBoy from './components/RequireDeliveryBoy';
 import AdminLayout from './components/admin/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
 import Orders from './pages/admin/Orders';
@@ -17,6 +19,8 @@ import Inventory from './pages/admin/Inventory';
 import DeliveryBoys from './pages/admin/DeliveryBoys';
 import Pincodes from './pages/admin/Pincodes';
 import Settings from './pages/admin/Settings';
+import DeliveryOrders from './pages/delivery/Orders';
+import DeliveryOrderDetail from './pages/delivery/OrderDetail';
 import Login from './pages/admin/Login';
 
 export default function App() {
@@ -26,19 +30,33 @@ export default function App() {
       <ToastProvider>
         <Routes>
           <Route path="/admin/login" element={<Login />} />
-          
+
+          {/* Admin Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route element={<AdminLayout />}>
-              <Route path="/admin/dashboard" element={<Dashboard />} />
-              <Route path="/admin/orders" element={<Orders />} />
-              <Route path="/admin/categories" element={<Categories />} />
-              <Route path="/admin/products" element={<Products />} />
-              <Route path="/admin/products/:id" element={<ProductDetail />} />
-              <Route path="/admin/inventory" element={<Inventory />} />
-              <Route path="/admin/delivery-boys" element={<DeliveryBoys />} />
-              <Route path="/admin/pincodes" element={<Pincodes />} />
-              <Route path="/admin/settings" element={<Settings />} />
-              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route element={<RequireAdmin />}>
+              <Route element={<AdminLayout />}>
+                <Route path="/admin/dashboard" element={<Dashboard />} />
+                <Route path="/admin/orders" element={<Orders />} />
+                <Route path="/admin/categories" element={<Categories />} />
+                <Route path="/admin/products" element={<Products />} />
+                <Route path="/admin/products/:id" element={<ProductDetail />} />
+                <Route path="/admin/inventory" element={<Inventory />} />
+                <Route path="/admin/delivery-boys" element={<DeliveryBoys />} />
+                <Route path="/admin/pincodes" element={<Pincodes />} />
+                <Route path="/admin/settings" element={<Settings />} />
+                <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              </Route>
+            </Route>
+          </Route>
+
+          {/* Delivery Boy Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<RequireDeliveryBoy />}>
+              <Route element={<AdminLayout />}>
+                <Route path="/delivery/orders" element={<DeliveryOrders />} />
+                <Route path="/delivery/order/:id" element={<DeliveryOrderDetail />} />
+                <Route path="/delivery" element={<Navigate to="/delivery/orders" replace />} />
+              </Route>
             </Route>
           </Route>
 

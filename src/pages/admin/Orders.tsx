@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   Search,
   MessageCircle,
-  Truck,
-  PackageCheck,
   CheckCircle,
   XCircle,
   ChevronRight,
@@ -63,6 +61,7 @@ export default function Orders() {
       toast('error', err?.message ?? 'Failed to update order status');
     }
   };
+
 
   const filteredOrders = orders.filter((order) => {
     const matchesFilter = filter === 'all' || order.status === filter;
@@ -143,10 +142,7 @@ export default function Orders() {
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
-            <option value="packed">Packed</option>
-            <option value="out_for_delivery">Out for Delivery</option>
-            <option value="delivered">Delivered</option>
+            <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
           <button
@@ -328,47 +324,33 @@ export default function Orders() {
 
                 {/* Status Actions */}
                 <div>
-                  <span className="text-[10px] font-bold text-neutral-500 uppercase mb-3 block">Update Status</span>
+                  <span className="text-[10px] font-bold text-neutral-500 uppercase mb-3 block">Actions</span>
                   <div className="grid grid-cols-2 gap-3">
                     {selectedOrder.status === 'pending' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'accepted')}
-                        className="flex items-center justify-center gap-2 p-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Accept Order
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleUpdateStatus(selectedOrder.id, 'completed')}
+                          className="flex items-center justify-center gap-2 p-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
+                        >
+                          <CheckCircle className="w-4 h-4" /> Mark Completed
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(selectedOrder.id, 'cancelled')}
+                          className="flex items-center justify-center gap-2 p-3 bg-white text-red-600 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-50 transition-all"
+                        >
+                          <XCircle className="w-4 h-4" /> Cancel
+                        </button>
+                      </>
                     )}
-                    {selectedOrder.status === 'accepted' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'packed')}
-                        className="flex items-center justify-center gap-2 p-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
-                      >
-                        <PackageCheck className="w-4 h-4" /> Mark Packed
-                      </button>
+                    {selectedOrder.status === 'completed' && (
+                      <div className="col-span-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                        <p className="text-sm font-semibold text-emerald-900">✓ Order Completed</p>
+                      </div>
                     )}
-                    {selectedOrder.status === 'packed' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'out_for_delivery')}
-                        className="flex items-center justify-center gap-2 p-3 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 transition-all"
-                      >
-                        <Truck className="w-4 h-4" /> Out for Delivery
-                      </button>
-                    )}
-                    {selectedOrder.status === 'out_for_delivery' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'delivered')}
-                        className="flex items-center justify-center gap-2 p-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Mark Delivered
-                      </button>
-                    )}
-                    {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'cancelled')}
-                        className="flex items-center justify-center gap-2 p-3 bg-white text-red-600 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-50 transition-all"
-                      >
-                        <XCircle className="w-4 h-4" /> Cancel Order
-                      </button>
+                    {selectedOrder.status === 'cancelled' && (
+                      <div className="col-span-2 p-3 bg-red-50 rounded-xl border border-red-200 text-center">
+                        <p className="text-sm font-semibold text-red-900">✗ Order Cancelled</p>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -15,22 +15,31 @@ export type Database = {
           id: string
           email: string
           full_name: string | null
+          phone: string | null
           role: 'admin' | 'delivery_boy'
+          is_active: boolean
           created_at: string
+          updated_at: string | null
         }
         Insert: {
           id: string
           email: string
           full_name?: string | null
+          phone?: string | null
           role?: 'admin' | 'delivery_boy'
+          is_active?: boolean
           created_at?: string
+          updated_at?: string | null
         }
         Update: {
           id?: string
           email?: string
           full_name?: string | null
+          phone?: string | null
           role?: 'admin' | 'delivery_boy'
+          is_active?: boolean
           created_at?: string
+          updated_at?: string | null
         }
       }
 
@@ -159,8 +168,9 @@ export type Database = {
           pincode: string
           total_amount: number
           payment_method: 'cod' | 'online'
-          status: 'pending' | 'accepted' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled'
+          status: 'pending' | 'completed' | 'cancelled'
           delivery_boy_id: string | null
+          notes: string | null
           created_at: string
         }
         Insert: {
@@ -171,8 +181,9 @@ export type Database = {
           pincode: string
           total_amount: number
           payment_method: 'cod' | 'online'
-          status?: 'pending' | 'accepted' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled'
+          status?: 'pending' | 'completed' | 'cancelled'
           delivery_boy_id?: string | null
+          notes?: string | null
           created_at?: string
         }
         Update: {
@@ -183,8 +194,9 @@ export type Database = {
           pincode?: string
           total_amount?: number
           payment_method?: 'cod' | 'online'
-          status?: 'pending' | 'accepted' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled'
+          status?: 'pending' | 'completed' | 'cancelled'
           delivery_boy_id?: string | null
+          notes?: string | null
           created_at?: string
         }
       }

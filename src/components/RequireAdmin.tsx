@@ -1,12 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-/**
- * Checks authentication status only.
- * Specific role requirements are enforced by RequireAdmin and RequireDeliveryBoy guards.
- */
-export default function ProtectedRoute() {
-  const { user, loading } = useAuth();
+export default function RequireAdmin() {
+  const { user, loading, profile } = useAuth();
 
   if (loading) {
     return (
@@ -16,7 +12,7 @@ export default function ProtectedRoute() {
     );
   }
 
-  if (!user) {
+  if (!user || profile?.role !== 'admin') {
     return <Navigate to="/admin/login" replace />;
   }
 
