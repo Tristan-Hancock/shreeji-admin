@@ -58,7 +58,7 @@ export default function Dashboard() {
       // Debug: log actual status values from DB so mismatches are visible
       const statusCounts: Record<string, number> = {};
       orders.forEach(o => {
-        const s = o.status ?? '(null)';
+        const s = o.order_status ?? '(null)';
         statusCounts[s] = (statusCounts[s] ?? 0) + 1;
       });
       console.log('[Dashboard] order status breakdown:', statusCounts);
@@ -72,13 +72,13 @@ export default function Dashboard() {
       const s = (v: string | null | undefined) => (v ?? '').toLowerCase().trim();
 
       const pending = orders.filter(o => {
-        const st = s(o.status);
-        return st === 'pending' || st === 'accepted' || st === 'packed' || st === 'out_for_delivery';
+        const st = s(o.order_status);
+        return st === 'pending';
       }).length;
-      const delivered = orders.filter(o => s(o.status) === 'delivered').length;
+      const delivered = orders.filter(o => s(o.order_status) === 'completed').length;
       const revenue = orders
-        .filter(o => s(o.status) === 'delivered')
-        .reduce((sum, o) => sum + (o.total_amount ?? 0), 0);
+        .filter(o => s(o.order_status) === 'completed')
+        .reduce((sum, o) => sum + (o.total ?? 0), 0);
 
       setStats({
         totalOrders: orders.length,
@@ -159,8 +159,8 @@ export default function Dashboard() {
                     <span className="text-xs text-neutral-500">{order.customer_name ?? '—'}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-sm font-bold">{formatCurrency(order.total_amount ?? 0)}</span>
-                    <StatusBadge status={order.status ?? 'pending'} />
+                    <span className="text-sm font-bold">{formatCurrency(order.total ?? 0)}</span>
+                    <StatusBadge status={order.order_status ?? 'pending'} />
                   </div>
                 </div>
               ))

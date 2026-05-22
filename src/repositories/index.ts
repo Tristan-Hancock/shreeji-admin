@@ -52,19 +52,22 @@ export const OrdersRepository = {
         throw error;
       }
 
+      console.log('[OrdersRepository.listAdminOrders] Query successful, rows:', data?.length ?? 0);
       return (data ?? []) as OrderWithItems[];
     });
   },
 
   async listPendingOrders(): Promise<OrderWithItems[]> {
+    console.log('[OrdersRepository.listPendingOrders] Querying pending orders...');
     return cachedFetch('orders:pending', async () => {
+      console.log('[OrdersRepository.listPendingOrders] Cache miss, fetching from database...');
       const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
           order_items (*)
         `)
-        .eq('status', 'pending')
+        .eq('order_status', 'pending')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -72,6 +75,7 @@ export const OrdersRepository = {
         throw error;
       }
 
+      console.log('[OrdersRepository.listPendingOrders] Query successful, rows:', data?.length ?? 0);
       return (data ?? []) as OrderWithItems[];
     });
   },
@@ -97,9 +101,10 @@ export const OrdersRepository = {
   },
 
   async updateStatus(id: string, status: string) {
+    console.log('[OrdersRepository.updateStatus] Updating order:', id, 'to status:', status);
     const { data, error } = await supabase
       .from('orders')
-      .update({ status })
+      .update({ order_status: status })
       .eq('id', id)
       .select()
       .single();
@@ -108,6 +113,7 @@ export const OrdersRepository = {
       console.error('[OrdersRepository.updateStatus] error:', error);
       throw error;
     }
+    console.log('[OrdersRepository.updateStatus] Update successful');
     invalidate('orders');
     return data;
   },

@@ -134,7 +134,7 @@ export default function DeliveryOrderDetail() {
             {order.id.toUpperCase()}
           </p>
         </div>
-        <StatusBadge status={order.status} />
+        <StatusBadge status={order.order_status} />
       </div>
 
       {/* Customer Information */}
@@ -199,7 +199,7 @@ export default function DeliveryOrderDetail() {
               <div className="flex items-center justify-between rounded-lg bg-emerald-50 p-3 border border-emerald-100">
                 <span className="text-sm font-semibold text-emerald-900">Total Amount</span>
                 <span className="text-lg font-bold text-emerald-900">
-                  {formatCurrency(order.total_amount || 0)}
+                  {formatCurrency(order.total || 0)}
                 </span>
               </div>
             </div>
@@ -229,7 +229,7 @@ export default function DeliveryOrderDetail() {
 
         <button
           onClick={handleMarkCompleted}
-          disabled={completing || order.status !== 'pending'}
+          disabled={completing || order.order_status !== 'pending'}
           className="flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-4 font-semibold text-white hover:bg-emerald-600 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors"
         >
           {completing ? (

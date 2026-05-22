@@ -16,9 +16,14 @@ export default function DeliveryOrders() {
   useEffect(() => {
     const fetchPendingOrders = async () => {
       try {
+        console.log('[DeliveryOrders] Fetching pending orders...');
         setLoading(true);
         setError(null);
         const data = await OrdersRepository.listPendingOrders();
+        console.log('[DeliveryOrders] Orders fetched:', {
+          count: data.length,
+          orders: data.map(o => ({ id: o.id, status: o.order_status, customer: o.customer_name }))
+        });
         setOrders(data);
       } catch (err) {
         console.error('[DeliveryOrders] Error fetching orders:', err);
@@ -99,7 +104,7 @@ export default function DeliveryOrders() {
                       #{order.id.slice(0, 8).toUpperCase()}
                     </p>
                   </div>
-                  <StatusBadge status={order.status} />
+                  <StatusBadge status={order.order_status} />
                 </div>
 
                 {/* Customer Info */}

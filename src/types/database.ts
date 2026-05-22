@@ -163,41 +163,71 @@ export type Database = {
         Row: {
           id: string
           customer_name: string
-          customer_phone: string
-          customer_address: string
+          phone: string
+          address_line_1: string
+          address_line_2: string | null
+          landmark: string | null
+          city: string
+          state: string
           pincode: string
-          total_amount: number
-          payment_method: 'cod' | 'online'
-          status: 'pending' | 'completed' | 'cancelled'
+          subtotal: number
+          delivery_fee: number
+          total: number
+          payment_method: 'cod' | 'upi'
+          payment_status: 'pending' | 'completed' | 'failed'
+          order_status: 'pending' | 'completed' | 'cancelled'
           delivery_boy_id: string | null
+          assigned_at: string | null
+          delivered_at: string | null
           notes: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           customer_name: string
-          customer_phone: string
-          customer_address: string
+          phone: string
+          address_line_1: string
+          address_line_2?: string | null
+          landmark?: string | null
+          city: string
+          state: string
           pincode: string
-          total_amount: number
-          payment_method: 'cod' | 'online'
-          status?: 'pending' | 'completed' | 'cancelled'
+          subtotal: number
+          delivery_fee?: number
+          total: number
+          payment_method: 'cod' | 'upi'
+          payment_status?: 'pending' | 'completed' | 'failed'
+          order_status?: 'pending' | 'completed' | 'cancelled'
           delivery_boy_id?: string | null
+          assigned_at?: string | null
+          delivered_at?: string | null
           notes?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           customer_name?: string
-          customer_phone?: string
-          customer_address?: string
+          phone?: string
+          address_line_1?: string
+          address_line_2?: string | null
+          landmark?: string | null
+          city?: string
+          state?: string
           pincode?: string
-          total_amount?: number
-          payment_method?: 'cod' | 'online'
-          status?: 'pending' | 'completed' | 'cancelled'
+          subtotal?: number
+          delivery_fee?: number
+          total?: number
+          payment_method?: 'cod' | 'upi'
+          payment_status?: 'pending' | 'completed' | 'failed'
+          order_status?: 'pending' | 'completed' | 'cancelled'
           delivery_boy_id?: string | null
+          assigned_at?: string | null
+          delivered_at?: string | null
           notes?: string | null
           created_at?: string
+          updated_at?: string
         }
       }
 

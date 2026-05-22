@@ -28,21 +28,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function initAuth() {
       try {
+        console.log('[AuthProvider] Initializing auth...');
+
         // Get initial session
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('[AuthProvider] Initial session:', {
+          user: session?.user?.id,
+          email: session?.user?.email,
+          hasSession: !!session,
+        });
+
         setUser(session?.user ?? null);
         if (session?.user) {
+          console.log('[AuthProvider] Fetching profile for user:', session.user.id);
           await fetchProfile(session.user.id);
         } else {
+          console.log('[AuthProvider] No session, setting loading to false');
           setLoading(false);
         }
 
         // Listen for auth changes
         const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+          console.log('[AuthProvider] Auth state changed:', {
+            event: _event,
+            user: session?.user?.id,
+            email: session?.user?.email,
+          });
+
           setUser(session?.user ?? null);
           if (session?.user) {
+            console.log('[AuthProvider] Auth state change: fetching profile');
             await fetchProfile(session.user.id);
           } else {
+            console.log('[AuthProvider] Auth state change: clearing profile');
             setProfile(null);
             setProfileLoading(false);
             setLoading(false);
@@ -51,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         subscription = data.subscription;
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('[AuthProvider] Auth initialization error:', error);
         setLoading(false);
       }
     }
@@ -66,27 +84,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchProfile(uid: string) {
     try {
+      console.log('[AuthProvider.fetchProfile] Starting profile fetch for:', uid);
       setProfileLoading(true);
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', uid)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[AuthProvider.fetchProfile] Profile query error:', error);
+        throw error;
+      }
+
+      console.log('[AuthProvider.fetchProfile] Profile fetched successfully:', {
+        id: data?.id,
+        email: data?.email,
+        role: data?.role,
+        full_name: data?.full_name,
+      });
+
       setProfile(data);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('[AuthProvider.fetchProfile] Error fetching profile:', error);
       // Profile fetch failed, but don't clear the user session
       // This is temporary - the user is still authenticated
     } finally {
+      console.log('[AuthProvider.fetchProfile] Profile fetch completed');
       setProfileLoading(false);
       setLoading(false);
     }
   }
 
   const signOut = async () => {
+    console.log('[AuthProvider] Signing out...');
     await supabase.auth.signOut();
+    console.log('[AuthProvider] Sign out completed');
   };
 
   return (

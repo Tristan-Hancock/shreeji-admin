@@ -64,25 +64,25 @@ export default function Orders() {
 
 
   const filteredOrders = orders.filter((order) => {
-    const matchesFilter = filter === 'all' || order.status === filter;
+    const matchesFilter = filter === 'all' || order.order_status === filter;
     const query = searchQuery.toLowerCase();
     const matchesSearch =
       !query ||
       (order.customer_name ?? '').toLowerCase().includes(query) ||
       order.id.toLowerCase().includes(query) ||
-      (order.customer_phone ?? '').includes(searchQuery);
+      (order.phone ?? '').includes(searchQuery);
     return matchesFilter && matchesSearch;
   });
 
   const sendWhatsApp = (order: OrderWithItems) => {
-    const phone = (order.customer_phone ?? '').startsWith('+')
-      ? (order.customer_phone ?? '').replace(/\D/g, '')
-      : `91${(order.customer_phone ?? '').replace(/\D/g, '')}`;
-    const statusLabel = (order.status ?? 'unknown').replace(/_/g, ' ');
+    const phone = (order.phone ?? '').startsWith('+')
+      ? (order.phone ?? '').replace(/\D/g, '')
+      : `91${(order.phone ?? '').replace(/\D/g, '')}`;
+    const statusLabel = (order.order_status ?? 'unknown').replace(/_/g, ' ');
     const message =
       `Hello ${order.customer_name ?? 'Customer'}, your order #${order.id.slice(0, 8)} has been updated.\n\n` +
       `Status: ${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}\n` +
-      `Amount: ₹${(order.total_amount ?? 0).toFixed(2)}\n\n` +
+      `Amount: ₹${(order.total ?? 0).toFixed(2)}\n\n` +
       `Thank you for shopping with us!`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
@@ -198,10 +198,10 @@ export default function Orders() {
                       {order.order_items?.length ?? 0} item{(order.order_items?.length ?? 0) !== 1 ? 's' : ''}
                     </td>
                     <td className="px-6 py-4 text-sm font-bold">
-                      {formatCurrency(order.total_amount ?? 0)}
+                      {formatCurrency(order.total ?? 0)}
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={order.status ?? 'pending'} />
+                      <StatusBadge status={order.order_status ?? 'pending'} />
                     </td>
                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
