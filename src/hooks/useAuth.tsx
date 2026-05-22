@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  profileLoading: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -18,6 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     // Hoist subscription ref outside the async function so the useEffect
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await fetchProfile(session.user.id);
           } else {
             setProfile(null);
+            setProfileLoading(false);
             setLoading(false);
           }
         });
@@ -63,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchProfile(uid: string) {
     try {
+      setProfileLoading(true);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -73,7 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      // Profile fetch failed, but don't clear the user session
+      // This is temporary - the user is still authenticated
     } finally {
+      setProfileLoading(false);
       setLoading(false);
     }
   }
@@ -83,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, profileLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
