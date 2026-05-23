@@ -25,7 +25,7 @@ export const ProductsRepository = {
         .select(`
           *,
           categories(id, name, slug),
-          product_variants(id, stock_qty, is_active)
+          product_variants(id, stock_qty, is_active, price)
         `)
         .order('created_at', { ascending: false });
 
@@ -44,11 +44,14 @@ export const ProductsRepository = {
 
       return (data ?? []).map((row) => {
         const variants = (row.product_variants as any[]) ?? [];
+        const prices = variants.map((v: any) => v.price as number).filter((p) => p != null && !isNaN(p));
         return {
           ...row,
           variant_count: variants.length,
           total_stock: variants.reduce((s: number, v: any) => s + (v.stock_qty ?? 0), 0),
           active_variants: variants.filter((v: any) => v.is_active).length,
+          min_price: prices.length > 0 ? Math.min(...prices) : null,
+          max_price: prices.length > 0 ? Math.max(...prices) : null,
         } as ProductListItem;
       });
     });

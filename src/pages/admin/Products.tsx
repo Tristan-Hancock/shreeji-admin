@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ProductsRepository } from '../../repositories/products.repository';
 import { CategoriesRepository } from '../../repositories/categories.repository';
 import type { ProductListItem, Category } from '../../types/catalog';
-import type { ProductInsert, ProductUpdate } from '../../types/catalog';
+import type { ProductInsert } from '../../types/catalog';
 import { cn, formatCurrency, generateSlug } from '../../lib/utils';
 import StatusBadge from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -332,7 +332,6 @@ export default function Products() {
   const [showArchived, setShowArchived] = useState(false);
 
   const [panelOpen, setPanelOpen] = useState(false);
-  const [editing, setEditing] = useState<ProductListItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -369,20 +368,12 @@ export default function Products() {
   // ── Panel helpers ────────────────────────────────────────────────────────
 
   function openCreate() {
-    setEditing(null);
-    setFormError(null);
-    setPanelOpen(true);
-  }
-
-  function openEdit(p: ProductListItem) {
-    setEditing(p);
     setFormError(null);
     setPanelOpen(true);
   }
 
   function closePanel() {
     setPanelOpen(false);
-    setEditing(null);
     setFormError(null);
   }
 
@@ -402,12 +393,7 @@ export default function Products() {
         is_active: values.is_active,
       };
 
-      if (editing) {
-        await ProductsRepository.updateProduct(editing.id, payload as ProductUpdate);
-      } else {
-        await ProductsRepository.createProduct(payload as ProductInsert);
-      }
-
+      await ProductsRepository.createProduct(payload as ProductInsert);
       closePanel();
       await fetchProducts();
     } catch (err: any) {
@@ -527,6 +513,9 @@ export default function Products() {
                 <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden lg:table-cell">
                   Brand
                 </th>
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden md:table-cell">
+                  Price
+                </th>
                 <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden sm:table-cell">
                   Variants
                 </th>
@@ -587,6 +576,26 @@ export default function Products() {
                       </span>
                     </td>
 
+                    {/* Price */}
+                    <td className="px-5 py-3.5 hidden md:table-cell">
+                      {product.min_price != null ? (
+                        product.min_price === product.max_price ? (
+                          <span className="text-sm font-semibold text-neutral-900">
+                            {formatCurrency(product.min_price)}
+                          </span>
+                        ) : (
+                          <span className="text-sm font-semibold text-neutral-900">
+                            {formatCurrency(product.min_price)}
+                            <span className="text-xs text-neutral-400 font-normal ml-1">
+                              – {formatCurrency(product.max_price!)}
+                            </span>
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-sm text-neutral-300">—</span>
+                      )}
+                    </td>
+
                     {/* Variants */}
                     <td className="px-5 py-3.5 hidden sm:table-cell">
                       <span className="text-sm font-semibold text-neutral-900">
@@ -638,8 +647,8 @@ export default function Products() {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => openEdit(product)}
-                          title="Edit product"
+                          onClick={() => navigate(`/admin/products/${product.id}`)}
+                          title="Edit product & variants"
                           className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -659,7 +668,7 @@ export default function Products() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <EmptyState
                       icon={Package}
                       title={
@@ -686,28 +695,14 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Create / Edit slide panel */}
+      {/* Add Product slide panel */}
       <SlidePanel
         open={panelOpen}
         onClose={closePanel}
-        title={editing ? 'Edit Product' : 'Add Product'}
-        subtitle={editing ? editing.name : undefined}
+        title="Add Product"
       >
         <ProductForm
-          key={editing?.id ?? 'new'}
-          initial={
-            editing
-              ? {
-                  category_id: editing.category_id,
-                  name: editing.name,
-                  slug: editing.slug,
-                  brand: editing.brand ?? '',
-                  description: editing.description ?? '',
-                  image_url: editing.image_url ?? '',
-                  is_active: editing.is_active,
-                }
-              : undefined
-          }
+          key="new"
           categories={categories}
           onSubmit={handleSubmit}
           onCancel={closePanel}
