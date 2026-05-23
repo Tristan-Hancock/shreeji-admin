@@ -3,6 +3,7 @@ import type { Database } from '../types/database';
 
 type DeliveryProfile = Database['public']['Tables']['profiles']['Row'];
 
+
 interface CreateDeliveryUserPayload {
   full_name: string;
   phone: string;
@@ -30,62 +31,16 @@ export const DeliveryService = {
   async createDeliveryUser(
     payload: CreateDeliveryUserPayload
   ): Promise<CreateDeliveryUserResponse> {
-    // Get current user's session
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
+    const { data, error } = await supabase.functions.invoke('create-delivery-user', {
+      body: payload,
+    });
 
-    if (sessionError || !session?.access_token) {
-      throw new Error('Unauthorized: No active session');
+    if (error) {
+      const message = error.message || 'Failed to create delivery user';
+      throw new Error(message);
     }
 
-    // Get Supabase URL from environment
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-
-    if (!supabaseUrl) {
-      throw new Error('Supabase URL not configured');
-    }
-
-    const functionUrl = `${supabaseUrl}/functions/v1/create-delivery-user`;
-    console.log('[DeliveryService] Calling Edge Function:', functionUrl);
-
-    try {
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      // Log response status for debugging
-      console.log('[DeliveryService] Response status:', response.status, response.statusText);
-
-      // Check if response is OK before parsing JSON
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          // If we can't parse JSON, use the status text
-          throw new Error(`Edge Function error: ${response.status} ${response.statusText}`);
-        }
-        throw new Error(errorData.error || `Failed to create delivery user: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('[DeliveryService] User created successfully:', data.id);
-
-      return data as CreateDeliveryUserResponse;
-    } catch (error) {
-      console.error('[DeliveryService] Fetch error:', error);
-      if (error instanceof TypeError) {
-        throw new Error(`Network error: ${error.message}`);
-      }
-      throw error;
-    }
+    return data as CreateDeliveryUserResponse;
   },
 
   /**
@@ -157,5 +112,24 @@ export const DeliveryService = {
    */
   async reactivateDeliveryStaff(id: string): Promise<DeliveryProfile> {
     return this.toggleDeliveryStaffStatus(id, true);
+  },
+
+  /**
+   * Deactivate delivery user via secure Edge Function
+   * Uses supabase.functions.invoke() which automatically handles
+   * Authorization header, apikey, and session management.
+   */
+  async deactivateDeliveryUserSecure(userId: string): Promise<{ success: boolean; message: string; deactivated_at: string }> {
+    const { data, error } = await supabase.functions.invoke('deactivate-delivery-user', {
+      body: { user_id: userId },
+    });
+
+    if (error) {
+      // error.context may contain the Response object with more detail
+      const message = error.message || 'Failed to deactivate delivery user';
+      throw new Error(message);
+    }
+
+    return data;
   },
 };

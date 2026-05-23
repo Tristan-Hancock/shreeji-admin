@@ -9,6 +9,7 @@ import {
   Mail,
   Phone,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DeliveryService } from '../../services/delivery.service';
@@ -26,6 +27,8 @@ export default function DeliveryBoys() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchDeliveryStaff = async () => {
     try {
@@ -66,6 +69,29 @@ export default function DeliveryBoys() {
       toast('error', msg);
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const handleDeactivateDeliveryBoy = async () => {
+    if (!deleteConfirm) return;
+
+    try {
+      setIsDeleting(true);
+
+      // Call Edge Function to deactivate user securely
+      await DeliveryService.deactivateDeliveryUserSecure(deleteConfirm.id);
+
+      // Update local state to remove from active list
+      setStaff(staff.filter((s) => s.id !== deleteConfirm.id));
+
+      toast('success', `${deleteConfirm.name} has been deactivated`);
+      setDeleteConfirm(null);
+    } catch (err) {
+      console.error('[DeliveryBoys] Error deactivating staff:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to deactivate staff member';
+      toast('error', msg);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -230,29 +256,43 @@ export default function DeliveryBoys() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() =>
-                          handleToggleStatus(member.id, member.is_active)
-                        }
-                        disabled={togglingId === member.id}
-                        className={cn(
-                          'p-2 rounded-lg transition-colors disabled:opacity-50',
-                          member.is_active
-                            ? 'text-amber-600 hover:bg-amber-50'
-                            : 'text-emerald-600 hover:bg-emerald-50'
-                        )}
-                        title={
-                          member.is_active
-                            ? 'Deactivate staff member'
-                            : 'Reactivate staff member'
-                        }
-                      >
-                        {member.is_active ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() =>
+                            handleToggleStatus(member.id, member.is_active)
+                          }
+                          disabled={togglingId === member.id}
+                          className={cn(
+                            'p-2 rounded-lg transition-colors disabled:opacity-50',
+                            member.is_active
+                              ? 'text-amber-600 hover:bg-amber-50'
+                              : 'text-emerald-600 hover:bg-emerald-50'
+                          )}
+                          title={
+                            member.is_active
+                              ? 'Deactivate staff member'
+                              : 'Reactivate staff member'
+                          }
+                        >
+                          {member.is_active ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() =>
+                            setDeleteConfirm({
+                              id: member.id,
+                              name: member.full_name || 'Staff Member',
+                            })
+                          }
+                          className="p-2 rounded-lg text-orange-600 hover:bg-orange-50 transition-colors"
+                          title="Deactivate staff member"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                 ))
@@ -290,9 +330,70 @@ export default function DeliveryBoys() {
           <li>✓ Delivery staff can login and see pending orders</li>
           <li>✓ They can mark orders as completed</li>
           <li>✓ Deactivate staff to revoke access without deleting their history</li>
+          <li>✓ All order and delivery history is preserved when deactivated</li>
           <li>✓ Only admins can create and manage delivery staff</li>
         </ul>
       </div>
+
+      {/* Deactivate Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeleteConfirm(null)}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-orange-100 rounded-xl">
+                    <AlertTriangle className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-neutral-900">Deactivate Staff Member?</h2>
+                    <p className="text-xs text-neutral-500">The user will not be able to login</p>
+                  </div>
+                </div>
+
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-900">
+                  <p className="font-semibold mb-2">Deactivating {deleteConfirm.name}</p>
+                  <ul className="space-y-1 text-xs list-disc list-inside">
+                    <li>User will not be able to login</li>
+                    <li>All authentication access will be revoked</li>
+                    <li>Order history will be preserved</li>
+                    <li>Delivery tracking data will be retained</li>
+                  </ul>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setDeleteConfirm(null)}
+                    className="flex-1 px-4 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-bold rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeactivateDeliveryBoy}
+                    disabled={isDeleting}
+                    className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {isDeleting ? 'Deactivating...' : 'Deactivate'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
