@@ -326,7 +326,7 @@ export default function Orders() {
                   </div>
                   <div className="mt-4 flex justify-between items-center p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                     <span className="font-bold text-emerald-900">Total Amount</span>
-                    <span className="text-lg font-black text-emerald-900">{formatCurrency(selectedOrder.total_amount ?? 0)}</span>
+                    <span className="text-lg font-black text-emerald-900">{formatCurrency(selectedOrder.total ?? 0)}</span>
                   </div>
                 </div>
 
@@ -334,7 +334,7 @@ export default function Orders() {
                 <div>
                   <span className="text-[10px] font-bold text-neutral-500 uppercase mb-3 block">Actions</span>
                   <div className="grid grid-cols-2 gap-3">
-                    {selectedOrder.status === 'pending' && (
+                    {selectedOrder.order_status === 'pending' && (
                       <>
                         <button
                           onClick={() => handleUpdateStatus(selectedOrder.id, 'completed')}
@@ -350,12 +350,12 @@ export default function Orders() {
                         </button>
                       </>
                     )}
-                    {selectedOrder.status === 'completed' && (
+                    {selectedOrder.order_status === 'completed' && (
                       <div className="col-span-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
                         <p className="text-sm font-semibold text-emerald-900">✓ Order Completed</p>
                       </div>
                     )}
-                    {selectedOrder.status === 'cancelled' && (
+                    {selectedOrder.order_status === 'cancelled' && (
                       <div className="col-span-2 p-3 bg-red-50 rounded-xl border border-red-200 text-center">
                         <p className="text-sm font-semibold text-red-900">✗ Order Cancelled</p>
                       </div>
