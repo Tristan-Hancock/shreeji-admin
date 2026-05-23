@@ -9,11 +9,13 @@ import {
   Mail,
   Phone,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DeliveryService } from '../../services/delivery.service';
 import { formatDate, cn } from '../../lib/utils';
 import { useToast } from '../../components/ui/Toast';
+import { supabase } from '../../lib/supabase';
 import CreateDeliveryUserForm from '../../components/delivery/CreateDeliveryUserForm';
 import type { Database } from '../../types/database';
 
@@ -26,6 +28,8 @@ export default function DeliveryBoys() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchDeliveryStaff = async () => {
     try {
@@ -66,6 +70,44 @@ export default function DeliveryBoys() {
       toast('error', msg);
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const handleDeleteDeliveryBoy = async () => {
+    if (!deleteConfirm) return;
+
+    try {
+      setIsDeleting(true);
+
+      // Delete from auth (using admin API)
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(deleteConfirm.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Delete from profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', deleteConfirm.id);
+
+      if (profileError) {
+        console.error('[DeliveryBoys] Profile deletion error:', profileError);
+        // Continue anyway
+      }
+
+      // Update local state
+      setStaff(staff.filter((s) => s.id !== deleteConfirm.id));
+
+      toast('success', `${deleteConfirm.name} has been deleted`);
+      setDeleteConfirm(null);
+    } catch (err) {
+      console.error('[DeliveryBoys] Error deleting staff:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to delete staff member';
+      toast('error', msg);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -230,29 +272,43 @@ export default function DeliveryBoys() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() =>
-                          handleToggleStatus(member.id, member.is_active)
-                        }
-                        disabled={togglingId === member.id}
-                        className={cn(
-                          'p-2 rounded-lg transition-colors disabled:opacity-50',
-                          member.is_active
-                            ? 'text-amber-600 hover:bg-amber-50'
-                            : 'text-emerald-600 hover:bg-emerald-50'
-                        )}
-                        title={
-                          member.is_active
-                            ? 'Deactivate staff member'
-                            : 'Reactivate staff member'
-                        }
-                      >
-                        {member.is_active ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() =>
+                            handleToggleStatus(member.id, member.is_active)
+                          }
+                          disabled={togglingId === member.id}
+                          className={cn(
+                            'p-2 rounded-lg transition-colors disabled:opacity-50',
+                            member.is_active
+                              ? 'text-amber-600 hover:bg-amber-50'
+                              : 'text-emerald-600 hover:bg-emerald-50'
+                          )}
+                          title={
+                            member.is_active
+                              ? 'Deactivate staff member'
+                              : 'Reactivate staff member'
+                          }
+                        >
+                          {member.is_active ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() =>
+                            setDeleteConfirm({
+                              id: member.id,
+                              name: member.full_name || 'Staff Member',
+                            })
+                          }
+                          className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete staff member"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                 ))
@@ -290,9 +346,69 @@ export default function DeliveryBoys() {
           <li>✓ Delivery staff can login and see pending orders</li>
           <li>✓ They can mark orders as completed</li>
           <li>✓ Deactivate staff to revoke access without deleting their history</li>
+          <li>✓ Delete staff to permanently remove them from the system</li>
           <li>✓ Only admins can create and manage delivery staff</li>
         </ul>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeleteConfirm(null)}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-red-100 rounded-xl">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-neutral-900">Delete Staff Member?</h2>
+                    <p className="text-xs text-neutral-500">This action cannot be undone</p>
+                  </div>
+                </div>
+
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-900">
+                  <p className="font-semibold mb-2">Deleting {deleteConfirm.name}</p>
+                  <ul className="space-y-1 text-xs list-disc list-inside">
+                    <li>Account will be permanently deleted</li>
+                    <li>All authentication access will be revoked</li>
+                    <li>User data will be removed</li>
+                  </ul>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setDeleteConfirm(null)}
+                    className="flex-1 px-4 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-bold rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteDeliveryBoy}
+                    disabled={isDeleting}
+                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -2,20 +2,28 @@ import { useState } from 'react';
 import {
   Building2,
   ShieldCheck,
-  MessageCircle,
-  Smartphone,
   ChevronRight,
   User,
   AlertTriangle,
   Lock,
   LogOut,
-  Users
+  Users,
+  MapPin,
+  Phone as PhoneIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../components/ui/Toast';
 import { useNavigate } from 'react-router-dom';
 import { AccountService } from '../../services/account.service';
+
+// Store Information
+const STORE_INFO = {
+  name: 'Shree Ji Kirana and FMCG General Store',
+  address: '11/2 Baser-colony, Mandsaur (M.P.)',
+  phone: '+91-XXXXXXXXXX', // Add actual phone if needed
+  email: 'info@shreeji-kirana.com' // Add actual email if needed
+};
 
 export default function Settings() {
   const { profile, signOut } = useAuth();
@@ -29,8 +37,6 @@ export default function Settings() {
       title: "Store Configuration",
       items: [
         { icon: Building2, label: "Store Details", desc: "Name, address, and VAT info", path: "#" },
-        { icon: MessageCircle, label: "WhatsApp Setup", desc: "Configure automated notification numbers", path: "#" },
-        { icon: Smartphone, label: "App Appearance", desc: "Logos, colors and theme settings", path: "#" },
       ]
     }
   ];
@@ -100,6 +106,32 @@ export default function Settings() {
         <button className="px-4 py-2 border border-neutral-200 rounded-xl text-sm font-bold hover:bg-neutral-50 transition-all">
           Edit Profile
         </button>
+      </div>
+
+      {/* Store Information Card */}
+      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border-2 border-emerald-200 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-emerald-600 rounded-xl flex-shrink-0">
+            <Building2 className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-bold text-emerald-900">{STORE_INFO.name}</h2>
+            <div className="space-y-2 mt-3">
+              <div className="flex items-start gap-2 text-emerald-800">
+                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <p className="text-sm">{STORE_INFO.address}</p>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-800">
+                <PhoneIcon className="w-4 h-4 flex-shrink-0" />
+                <p className="text-sm">{STORE_INFO.phone}</p>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-800">
+                <span className="text-sm">📧</span>
+                <p className="text-sm">{STORE_INFO.email}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Store Configuration Section */}
