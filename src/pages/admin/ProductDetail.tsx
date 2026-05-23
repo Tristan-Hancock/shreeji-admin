@@ -16,9 +16,12 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ProductsRepository } from '../../repositories/products.repository';
 import { VariantsRepository } from '../../repositories/variants.repository';
-import type { ProductWithVariants, ProductVariant, VariantInsert, VariantUpdate } from '../../types/catalog';
+import { CategoriesRepository } from '../../repositories/categories.repository';
+import type { ProductWithVariants, ProductVariant, VariantInsert, VariantUpdate, ProductUpdate, Category } from '../../types/catalog';
 import { UNIT_TYPES } from '../../types/catalog';
-import { cn, formatCurrency } from '../../lib/utils';
+import { cn, formatCurrency, generateSlug } from '../../lib/utils';
+import ImageUpload from '../../components/ui/ImageUpload';
+import { StorageService } from '../../services/storage.service';
 import StatusBadge from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import ImagePreview from '../../components/ui/ImagePreview';
@@ -280,6 +283,167 @@ function VariantForm({ initial, onSubmit, onCancel, submitting, error }: Variant
   );
 }
 
+// ─── Product info form ────────────────────────────────────────────────────
+
+interface ProductInfoValues {
+  name: string;
+  slug: string;
+  category_id: string;
+  brand: string;
+  description: string;
+  image_url: string;
+  is_active: boolean;
+}
+
+interface ProductInfoFormProps {
+  initial: ProductInfoValues;
+  categories: Category[];
+  onSubmit: (v: ProductInfoValues) => Promise<void>;
+  onCancel: () => void;
+  submitting: boolean;
+  error: string | null;
+}
+
+function ProductInfoForm({ initial, categories, onSubmit, onCancel, submitting, error }: ProductInfoFormProps) {
+  const [values, setValues] = useState<ProductInfoValues>(initial);
+  const [slugLocked, setSlugLocked] = useState(true);
+
+  function handleNameChange(name: string) {
+    setValues((p) => ({ ...p, name, slug: slugLocked ? p.slug : generateSlug(name) }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await onSubmit(values);
+  }
+
+  const field = 'w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm transition-shadow';
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {error && (
+        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+            Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={values.name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            required
+            className={field}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+            Slug <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm select-none">/</span>
+            <input
+              type="text"
+              value={values.slug}
+              onChange={(e) => { setSlugLocked(true); setValues((p) => ({ ...p, slug: e.target.value })); }}
+              required
+              className={cn(field, 'pl-7 font-mono')}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+            Category <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <select
+              value={values.category_id}
+              onChange={(e) => setValues((p) => ({ ...p, category_id: e.target.value }))}
+              required
+              className={cn(field, 'appearance-none pr-8 cursor-pointer')}
+            >
+              <option value="">Select a category…</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+            Brand <span className="font-normal text-neutral-400">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={values.brand}
+            onChange={(e) => setValues((p) => ({ ...p, brand: e.target.value }))}
+            className={field}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+            Description <span className="font-normal text-neutral-400">(optional)</span>
+          </label>
+          <textarea
+            value={values.description}
+            onChange={(e) => setValues((p) => ({ ...p, description: e.target.value }))}
+            rows={3}
+            className={cn(field, 'resize-none')}
+          />
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">Image</p>
+        <ImageUpload
+          value={values.image_url || null}
+          onChange={(url) => setValues((p) => ({ ...p, image_url: url ?? '' }))}
+          onUpload={StorageService.uploadProductImage}
+          aspectRatio="16/9"
+        />
+      </div>
+
+      <div className="flex items-center justify-between p-4 bg-neutral-50 border border-neutral-200 rounded-xl">
+        <div>
+          <p className="text-sm font-semibold text-neutral-900">Active</p>
+          <p className="text-xs text-neutral-500">Visible in the customer app</p>
+        </div>
+        <Toggle
+          checked={values.is_active}
+          onChange={() => setValues((p) => ({ ...p, is_active: !p.is_active }))}
+        />
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2 border-t border-neutral-100">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-5 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-60"
+        >
+          {submitting ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 // ─── Slide panel ──────────────────────────────────────────────────────────
 
 function SlidePanel({
@@ -426,6 +590,11 @@ export default function ProductDetail() {
   const [archivingProduct, setArchivingProduct] = useState(false);
   const [archivingVariant, setArchivingVariant] = useState<ProductVariant | null>(null);
 
+  const [infoPanel, setInfoPanel] = useState(false);
+  const [infoSubmitting, setInfoSubmitting] = useState(false);
+  const [infoError, setInfoError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+
   // ── Load ─────────────────────────────────────────────────────────────────
 
   const fetchProduct = useCallback(async () => {
@@ -445,6 +614,36 @@ export default function ProductDetail() {
   useEffect(() => {
     fetchProduct();
   }, [fetchProduct]);
+
+  useEffect(() => {
+    CategoriesRepository.listCategories().then(setCategories).catch(console.error);
+  }, []);
+
+  // ── Product info edit ─────────────────────────────────────────────────────
+
+  async function handleInfoSubmit(values: ProductInfoValues) {
+    if (!product) return;
+    setInfoSubmitting(true);
+    setInfoError(null);
+    try {
+      const payload: ProductUpdate = {
+        category_id: values.category_id || null,
+        name: values.name.trim(),
+        slug: values.slug.trim(),
+        brand: values.brand.trim() || null,
+        description: values.description.trim() || null,
+        image_url: values.image_url.trim() || null,
+        is_active: values.is_active,
+      };
+      await ProductsRepository.updateProduct(product.id, payload);
+      setInfoPanel(false);
+      await fetchProduct();
+    } catch (err: any) {
+      setInfoError(err?.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setInfoSubmitting(false);
+    }
+  }
 
   // ── Variant panel helpers ─────────────────────────────────────────────────
 
@@ -684,9 +883,16 @@ export default function ProductDetail() {
                   </p>
                   <p className="text-xs text-neutral-400 font-mono mt-1">/{product.slug}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <StatusBadge status={product.is_active ? 'active' : 'inactive'} />
                   <Toggle checked={product.is_active} onChange={handleProductToggle} />
+                  <button
+                    onClick={() => { setInfoError(null); setInfoPanel(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    Edit Details
+                  </button>
                   {product.is_active && (
                     <button
                       onClick={() => setArchivingProduct(true)}
@@ -908,6 +1114,33 @@ export default function ProductDetail() {
           submitting={submitting}
           error={variantError}
         />
+      </SlidePanel>
+
+      {/* Edit product info panel */}
+      <SlidePanel
+        open={infoPanel}
+        onClose={() => setInfoPanel(false)}
+        title="Edit Product Details"
+        subtitle={product?.name}
+      >
+        {product && (
+          <ProductInfoForm
+            initial={{
+              name: product.name,
+              slug: product.slug,
+              category_id: product.category_id ?? '',
+              brand: product.brand ?? '',
+              description: product.description ?? '',
+              image_url: product.image_url ?? '',
+              is_active: product.is_active,
+            }}
+            categories={categories}
+            onSubmit={handleInfoSubmit}
+            onCancel={() => setInfoPanel(false)}
+            submitting={infoSubmitting}
+            error={infoError}
+          />
+        )}
       </SlidePanel>
 
       {/* Archive product confirmation */}

@@ -31,7 +31,7 @@ export type CategoryWithCount = Category & {
 // ─── Product join types ───────────────────────────────────────────────────
 
 /** Slim variant shape used inside the product list (avoids over-fetching). */
-export type VariantSummary = Pick<ProductVariant, 'id' | 'stock_qty' | 'is_active'>;
+export type VariantSummary = Pick<ProductVariant, 'id' | 'stock_qty' | 'is_active' | 'price'>;
 
 /** Slim category shape embedded in product queries. */
 export type CategoryRef = Pick<Category, 'id' | 'name' | 'slug'>;
@@ -48,6 +48,8 @@ export type ProductListItem = Product & {
   variant_count: number;
   total_stock: number;
   active_variants: number;
+  min_price: number | null;
+  max_price: number | null;
 };
 
 /**

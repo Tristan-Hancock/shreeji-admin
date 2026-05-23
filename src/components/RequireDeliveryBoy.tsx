@@ -53,10 +53,10 @@ export default function RequireDeliveryBoy() {
     );
   }
 
-  // Check if user has delivery_boy role
-  if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] Checking role:', profile.role);
-  if (profile.role !== 'delivery_boy') {
-    if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] User role is not delivery_boy, redirecting to login');
+  // Check if user has delivery_boy role and is active
+  if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] Checking role:', profile.role, 'is_active:', profile.is_active);
+  if (profile.role !== 'delivery_boy' || !profile.is_active) {
+    if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] User role is not delivery_boy or account is deactivated, redirecting to login');
     return <Navigate to="/admin/login" replace />;
   }
 

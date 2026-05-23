@@ -14,8 +14,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ProductsRepository } from '../../repositories/products.repository';
 import { CategoriesRepository } from '../../repositories/categories.repository';
+import { VariantsRepository } from '../../repositories/variants.repository';
 import type { ProductListItem, Category } from '../../types/catalog';
-import type { ProductInsert, ProductUpdate } from '../../types/catalog';
+import type { ProductInsert, VariantInsert } from '../../types/catalog';
 import { cn, formatCurrency, generateSlug } from '../../lib/utils';
 import StatusBadge from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -60,6 +61,9 @@ interface ProductFormValues {
   description: string;
   image_url: string;
   is_active: boolean;
+  price: string;
+  mrp: string;
+  stock_qty: string;
 }
 
 const BLANK_PRODUCT: ProductFormValues = {
@@ -70,6 +74,9 @@ const BLANK_PRODUCT: ProductFormValues = {
   description: '',
   image_url: '',
   is_active: true,
+  price: '',
+  mrp: '',
+  stock_qty: '0',
 };
 
 interface ProductFormProps {
@@ -230,6 +237,60 @@ function ProductForm({
         />
       </div>
 
+      {/* Section: Pricing */}
+      <div>
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+          Pricing
+        </p>
+        <p className="text-xs text-neutral-400 mb-3">
+          Optional — sets a single default price. Leave blank to add variants with individual prices later.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              Selling Price (₹)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={values.price}
+              onChange={(e) => setValues((p) => ({ ...p, price: e.target.value }))}
+              placeholder="0.00"
+              className={field}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              MRP (₹) <span className="font-normal text-neutral-400">(optional)</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={values.mrp}
+              onChange={(e) => setValues((p) => ({ ...p, mrp: e.target.value }))}
+              placeholder="0.00"
+              className={field}
+            />
+          </div>
+        </div>
+        {values.price && (
+          <div className="mt-3">
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              Stock Quantity
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={values.stock_qty}
+              onChange={(e) => setValues((p) => ({ ...p, stock_qty: e.target.value }))}
+              className={field}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Section: Visibility */}
       <div>
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
@@ -332,7 +393,6 @@ export default function Products() {
   const [showArchived, setShowArchived] = useState(false);
 
   const [panelOpen, setPanelOpen] = useState(false);
-  const [editing, setEditing] = useState<ProductListItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -369,20 +429,12 @@ export default function Products() {
   // ── Panel helpers ────────────────────────────────────────────────────────
 
   function openCreate() {
-    setEditing(null);
-    setFormError(null);
-    setPanelOpen(true);
-  }
-
-  function openEdit(p: ProductListItem) {
-    setEditing(p);
     setFormError(null);
     setPanelOpen(true);
   }
 
   function closePanel() {
     setPanelOpen(false);
-    setEditing(null);
     setFormError(null);
   }
 
@@ -392,7 +444,7 @@ export default function Products() {
     setSubmitting(true);
     setFormError(null);
     try {
-      const payload = {
+      const product = await ProductsRepository.createProduct({
         category_id: values.category_id,
         name: values.name.trim(),
         slug: values.slug.trim(),
@@ -400,12 +452,18 @@ export default function Products() {
         description: values.description.trim() || null,
         image_url: values.image_url.trim() || null,
         is_active: values.is_active,
-      };
+      } as ProductInsert);
 
-      if (editing) {
-        await ProductsRepository.updateProduct(editing.id, payload as ProductUpdate);
-      } else {
-        await ProductsRepository.createProduct(payload as ProductInsert);
+      const price = parseFloat(values.price);
+      if (!isNaN(price) && price > 0) {
+        await VariantsRepository.createVariant({
+          product_id: product.id,
+          variant_name: 'Default',
+          price,
+          mrp: values.mrp ? parseFloat(values.mrp) : null,
+          stock_qty: parseInt(values.stock_qty, 10) || 0,
+          is_active: true,
+        } as VariantInsert);
       }
 
       closePanel();
@@ -527,6 +585,9 @@ export default function Products() {
                 <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden lg:table-cell">
                   Brand
                 </th>
+                <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden md:table-cell">
+                  Price
+                </th>
                 <th className="px-5 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden sm:table-cell">
                   Variants
                 </th>
@@ -587,6 +648,26 @@ export default function Products() {
                       </span>
                     </td>
 
+                    {/* Price */}
+                    <td className="px-5 py-3.5 hidden md:table-cell">
+                      {product.min_price != null ? (
+                        product.min_price === product.max_price ? (
+                          <span className="text-sm font-semibold text-neutral-900">
+                            {formatCurrency(product.min_price)}
+                          </span>
+                        ) : (
+                          <span className="text-sm font-semibold text-neutral-900">
+                            {formatCurrency(product.min_price)}
+                            <span className="text-xs text-neutral-400 font-normal ml-1">
+                              – {formatCurrency(product.max_price!)}
+                            </span>
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-sm text-neutral-300">—</span>
+                      )}
+                    </td>
+
                     {/* Variants */}
                     <td className="px-5 py-3.5 hidden sm:table-cell">
                       <span className="text-sm font-semibold text-neutral-900">
@@ -638,8 +719,8 @@ export default function Products() {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => openEdit(product)}
-                          title="Edit product"
+                          onClick={() => navigate(`/admin/products/${product.id}`)}
+                          title="Edit product & variants"
                           className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -659,7 +740,7 @@ export default function Products() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <EmptyState
                       icon={Package}
                       title={
@@ -686,28 +767,14 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Create / Edit slide panel */}
+      {/* Add Product slide panel */}
       <SlidePanel
         open={panelOpen}
         onClose={closePanel}
-        title={editing ? 'Edit Product' : 'Add Product'}
-        subtitle={editing ? editing.name : undefined}
+        title="Add Product"
       >
         <ProductForm
-          key={editing?.id ?? 'new'}
-          initial={
-            editing
-              ? {
-                  category_id: editing.category_id,
-                  name: editing.name,
-                  slug: editing.slug,
-                  brand: editing.brand ?? '',
-                  description: editing.description ?? '',
-                  image_url: editing.image_url ?? '',
-                  is_active: editing.is_active,
-                }
-              : undefined
-          }
+          key="new"
           categories={categories}
           onSubmit={handleSubmit}
           onCancel={closePanel}
