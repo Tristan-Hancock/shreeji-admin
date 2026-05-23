@@ -1,31 +1,35 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ShoppingBag, 
-  Package, 
-  ClipboardList, 
-  Users, 
-  MapPin, 
-  Settings, 
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  Package,
+  ClipboardList,
+  Users,
+  MapPin,
+  Settings,
   LogOut,
   Menu,
-  X,
-  Truck
+  X
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import shreejiLogo from '../../assets/shreejilogo.png';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard',     path: '/admin/dashboard',    roles: ['admin', 'delivery_boy'] },
-  { icon: ShoppingBag,    label: 'Orders',         path: '/admin/orders',       roles: ['admin', 'delivery_boy'] },
+  // Admin Only
+  { icon: LayoutDashboard, label: 'Dashboard',     path: '/admin/dashboard',    roles: ['admin'] },
+  { icon: ShoppingBag,    label: 'Orders',         path: '/admin/orders',       roles: ['admin'] },
   { icon: Package,        label: 'Products',       path: '/admin/products',     roles: ['admin'] },
   { icon: ClipboardList,  label: 'Categories',     path: '/admin/categories',   roles: ['admin'] },
-  { icon: Truck,          label: 'Inventory',      path: '/admin/inventory',    roles: ['admin'] },
+  { icon: ClipboardList,  label: 'Inventory',      path: '/admin/inventory',    roles: ['admin'] },
   { icon: Users,          label: 'Delivery Boys',  path: '/admin/delivery-boys', roles: ['admin'] },
   { icon: MapPin,         label: 'Pincodes',       path: '/admin/pincodes',     roles: ['admin'] },
   { icon: Settings,       label: 'Settings',       path: '/admin/settings',     roles: ['admin'] },
+
+  // Delivery Boy Only
+  { icon: ShoppingBag,    label: 'My Deliveries',  path: '/delivery/orders',    roles: ['delivery_boy'] },
 ];
 
 export default function Sidebar() {
@@ -41,9 +45,7 @@ export default function Sidebar() {
   const NavContent = () => (
     <div className="flex flex-col h-full py-6 px-4">
       <div className="flex items-center gap-3 mb-10 px-2">
-        <div className="bg-emerald-600 p-2 rounded-lg">
-          <Truck className="w-6 h-6 text-white" />
-        </div>
+        <img src={shreejiLogo} alt="ShreeJi Logo" className="w-8 h-8 object-contain" />
         <span className="text-xl font-bold tracking-tight">ShreeJi Store Manager</span>
       </div>
 
@@ -108,7 +110,7 @@ export default function Sidebar() {
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-neutral-200 flex items-center justify-between px-4 z-40">
         <div className="flex items-center gap-2">
-          <Truck className="w-6 h-6 text-emerald-600" />
+          <img src="/src/assets/shreejilogo.png" alt="ShreeJi Logo" className="w-6 h-6 object-contain" />
           <span className="font-bold tracking-tight text-lg">ShreeJi Store Manager</span>
         </div>
         <button onClick={() => setIsOpen(true)} className="p-2 text-neutral-600">

@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   Search,
   MessageCircle,
-  Truck,
-  PackageCheck,
   CheckCircle,
   XCircle,
   ChevronRight,
@@ -14,7 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { OrdersRepository, type OrderWithItems } from '../../repositories';
-import { formatCurrency, formatDate, cn } from '../../lib/utils';
+import { formatCurrency, formatDate, formatOrderAddress, cn } from '../../lib/utils';
 import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/ui/EmptyState';
 import { useToast } from '../../components/ui/Toast';
@@ -55,7 +53,7 @@ export default function Orders() {
       await fetchOrders();
       if (selectedOrder?.id === id) {
         setSelectedOrder((prev) =>
-          prev ? { ...prev, status: status as any } : null,
+          prev ? { ...prev, order_status: status as any } : null,
         );
       }
     } catch (err: any) {
@@ -64,26 +62,27 @@ export default function Orders() {
     }
   };
 
+
   const filteredOrders = orders.filter((order) => {
-    const matchesFilter = filter === 'all' || order.status === filter;
+    const matchesFilter = filter === 'all' || order.order_status === filter;
     const query = searchQuery.toLowerCase();
     const matchesSearch =
       !query ||
       (order.customer_name ?? '').toLowerCase().includes(query) ||
       order.id.toLowerCase().includes(query) ||
-      (order.customer_phone ?? '').includes(searchQuery);
+      (order.phone ?? '').includes(searchQuery);
     return matchesFilter && matchesSearch;
   });
 
   const sendWhatsApp = (order: OrderWithItems) => {
-    const phone = (order.customer_phone ?? '').startsWith('+')
-      ? (order.customer_phone ?? '').replace(/\D/g, '')
-      : `91${(order.customer_phone ?? '').replace(/\D/g, '')}`;
-    const statusLabel = (order.status ?? 'unknown').replace(/_/g, ' ');
+    const phone = (order.phone ?? '').startsWith('+')
+      ? (order.phone ?? '').replace(/\D/g, '')
+      : `91${(order.phone ?? '').replace(/\D/g, '')}`;
+    const statusLabel = (order.order_status ?? 'unknown').replace(/_/g, ' ');
     const message =
       `Hello ${order.customer_name ?? 'Customer'}, your order #${order.id.slice(0, 8)} has been updated.\n\n` +
       `Status: ${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}\n` +
-      `Amount: ₹${(order.total_amount ?? 0).toFixed(2)}\n\n` +
+      `Amount: ₹${(order.total ?? 0).toFixed(2)}\n\n` +
       `Thank you for shopping with us!`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
@@ -143,10 +142,7 @@ export default function Orders() {
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
-            <option value="packed">Packed</option>
-            <option value="out_for_delivery">Out for Delivery</option>
-            <option value="delivered">Delivered</option>
+            <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
           <button
@@ -192,7 +188,7 @@ export default function Orders() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold">{order.customer_name ?? '—'}</span>
-                        <span className="text-xs text-neutral-500">{order.customer_phone ?? '—'}</span>
+                        <span className="text-xs text-neutral-500">{order.phone ?? '—'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-600">
@@ -202,10 +198,10 @@ export default function Orders() {
                       {order.order_items?.length ?? 0} item{(order.order_items?.length ?? 0) !== 1 ? 's' : ''}
                     </td>
                     <td className="px-6 py-4 text-sm font-bold">
-                      {formatCurrency(order.total_amount ?? 0)}
+                      {formatCurrency(order.total ?? 0)}
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={order.status ?? 'pending'} />
+                      <StatusBadge status={order.order_status ?? 'pending'} />
                     </td>
                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
@@ -282,12 +278,12 @@ export default function Orders() {
                   <div className="p-4 bg-neutral-50 rounded-2xl">
                     <span className="text-[10px] font-bold text-neutral-500 uppercase mb-1 block">Customer</span>
                     <p className="text-sm font-bold">{selectedOrder.customer_name ?? '—'}</p>
-                    <p className="text-xs text-neutral-600">{selectedOrder.customer_phone ?? '—'}</p>
+                    <p className="text-xs text-neutral-600">{selectedOrder.phone ?? '—'}</p>
                   </div>
                   <div className="p-4 bg-neutral-50 rounded-2xl">
                     <span className="text-[10px] font-bold text-neutral-500 uppercase mb-1 block">Payment</span>
                     <p className="text-sm font-bold uppercase">{selectedOrder.payment_method ?? '—'}</p>
-                    <StatusBadge status={selectedOrder.status ?? 'pending'} />
+                    <StatusBadge status={selectedOrder.order_status ?? 'pending'} />
                   </div>
                 </div>
 
@@ -296,8 +292,16 @@ export default function Orders() {
                   <div className="flex gap-3 items-start p-4 border border-neutral-100 rounded-2xl">
                     <MapPin className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm text-neutral-700 leading-relaxed">{selectedOrder.customer_address ?? '—'}</p>
-                      <p className="text-sm font-bold mt-1">Pincode: {selectedOrder.pincode ?? '—'}</p>
+                      <p className="text-sm text-neutral-700 leading-relaxed">
+                        {formatOrderAddress(
+                          selectedOrder.address_line_1,
+                          selectedOrder.address_line_2,
+                          selectedOrder.landmark,
+                          selectedOrder.city,
+                          selectedOrder.state,
+                          selectedOrder.pincode
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -310,10 +314,10 @@ export default function Orders() {
                       selectedOrder.order_items.map((item) => (
                         <div key={item.id} className="flex justify-between items-center p-3 border border-neutral-100 rounded-xl">
                           <div>
-                            <p className="text-sm font-bold">{item.product_name ?? '—'}</p>
-                            <p className="text-xs text-neutral-500">{item.variant_name ?? '—'} x {item.quantity ?? 0}</p>
+                            <p className="text-sm font-bold">{item.product_name_snapshot ?? '—'}</p>
+                            <p className="text-xs text-neutral-500">{item.variant_snapshot ?? '—'} x {item.quantity ?? 0}</p>
                           </div>
-                          <p className="text-sm font-bold">{formatCurrency((item.price_at_order ?? 0) * (item.quantity ?? 0))}</p>
+                          <p className="text-sm font-bold">{formatCurrency(item.total ?? 0)}</p>
                         </div>
                       ))
                     ) : (
@@ -322,53 +326,39 @@ export default function Orders() {
                   </div>
                   <div className="mt-4 flex justify-between items-center p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                     <span className="font-bold text-emerald-900">Total Amount</span>
-                    <span className="text-lg font-black text-emerald-900">{formatCurrency(selectedOrder.total_amount ?? 0)}</span>
+                    <span className="text-lg font-black text-emerald-900">{formatCurrency(selectedOrder.total ?? 0)}</span>
                   </div>
                 </div>
 
                 {/* Status Actions */}
                 <div>
-                  <span className="text-[10px] font-bold text-neutral-500 uppercase mb-3 block">Update Status</span>
+                  <span className="text-[10px] font-bold text-neutral-500 uppercase mb-3 block">Actions</span>
                   <div className="grid grid-cols-2 gap-3">
-                    {selectedOrder.status === 'pending' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'accepted')}
-                        className="flex items-center justify-center gap-2 p-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Accept Order
-                      </button>
+                    {selectedOrder.order_status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleUpdateStatus(selectedOrder.id, 'completed')}
+                          className="flex items-center justify-center gap-2 p-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
+                        >
+                          <CheckCircle className="w-4 h-4" /> Mark Completed
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(selectedOrder.id, 'cancelled')}
+                          className="flex items-center justify-center gap-2 p-3 bg-white text-red-600 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-50 transition-all"
+                        >
+                          <XCircle className="w-4 h-4" /> Cancel
+                        </button>
+                      </>
                     )}
-                    {selectedOrder.status === 'accepted' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'packed')}
-                        className="flex items-center justify-center gap-2 p-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
-                      >
-                        <PackageCheck className="w-4 h-4" /> Mark Packed
-                      </button>
+                    {selectedOrder.order_status === 'completed' && (
+                      <div className="col-span-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                        <p className="text-sm font-semibold text-emerald-900">✓ Order Completed</p>
+                      </div>
                     )}
-                    {selectedOrder.status === 'packed' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'out_for_delivery')}
-                        className="flex items-center justify-center gap-2 p-3 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 transition-all"
-                      >
-                        <Truck className="w-4 h-4" /> Out for Delivery
-                      </button>
-                    )}
-                    {selectedOrder.status === 'out_for_delivery' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'delivered')}
-                        className="flex items-center justify-center gap-2 p-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Mark Delivered
-                      </button>
-                    )}
-                    {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'cancelled')}
-                        className="flex items-center justify-center gap-2 p-3 bg-white text-red-600 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-50 transition-all"
-                      >
-                        <XCircle className="w-4 h-4" /> Cancel Order
-                      </button>
+                    {selectedOrder.order_status === 'cancelled' && (
+                      <div className="col-span-2 p-3 bg-red-50 rounded-xl border border-red-200 text-center">
+                        <p className="text-sm font-semibold text-red-900">✗ Order Cancelled</p>
+                      </div>
                     )}
                   </div>
                 </div>

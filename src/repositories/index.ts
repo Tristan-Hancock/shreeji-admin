@@ -28,6 +28,7 @@ export type {
 
 // ─── Orders ───────────────────────────────────────────────────────────────
 import { supabase } from '../lib/supabase';
+import { cachedFetch, invalidate } from '../lib/cache';
 import type { Database } from '../types/database';
 
 export type Order     = Database['public']['Tables']['orders']['Row'];
@@ -37,103 +38,112 @@ export type OrderWithItems = Order & { order_items: OrderItem[] };
 
 export const OrdersRepository = {
   async listAdminOrders(): Promise<OrderWithItems[]> {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (*)
-      `)
-      .order('created_at', { ascending: false });
+    return cachedFetch('orders:all', async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (*)
+        `)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('[OrdersRepository.listAdminOrders] query error:', error);
-      throw error;
-    }
+      if (error) {
+        console.error('[OrdersRepository.listAdminOrders] query error:', error);
+        throw error;
+      }
 
-    console.log('[OrdersRepository.listAdminOrders] fetched', data?.length ?? 0, 'orders');
+      console.log('[OrdersRepository.listAdminOrders] Query successful, rows:', data?.length ?? 0);
+      return (data ?? []) as OrderWithItems[];
+    });
+  },
 
-    return (data ?? []) as OrderWithItems[];
+  async listPendingOrders(): Promise<OrderWithItems[]> {
+    console.log('[OrdersRepository.listPendingOrders] Querying pending orders...');
+    return cachedFetch('orders:pending', async () => {
+      console.log('[OrdersRepository.listPendingOrders] Cache miss, fetching from database...');
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (*)
+        `)
+        .eq('order_status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[OrdersRepository.listPendingOrders] query error:', error);
+        throw error;
+      }
+
+      console.log('[OrdersRepository.listPendingOrders] Query successful, rows:', data?.length ?? 0);
+      return (data ?? []) as OrderWithItems[];
+    });
   },
 
   async getAdminOrder(id: string): Promise<OrderWithItems> {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (*)
-      `)
-      .eq('id', id)
-      .single();
+    return cachedFetch(`orders:${id}`, async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (*)
+        `)
+        .eq('id', id)
+        .single();
 
-    if (error) {
-      console.error('[OrdersRepository.getAdminOrder] query error:', error);
-      throw error;
-    }
+      if (error) {
+        console.error('[OrdersRepository.getAdminOrder] query error:', error);
+        throw error;
+      }
 
-    return data as OrderWithItems;
-  },
-
-  /** @deprecated Use listAdminOrders instead */
-  async getAll(): Promise<OrderWithItems[]> {
-    return this.listAdminOrders();
-  },
-
-  /** @deprecated Use getAdminOrder instead */
-  async getById(id: string): Promise<OrderWithItems> {
-    return this.getAdminOrder(id);
+      return data as OrderWithItems;
+    });
   },
 
   async updateStatus(id: string, status: string) {
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ status })
-      .eq('id', id)
-      .select()
-      .single();
+    console.log('[OrdersRepository.updateStatus] Updating order via RPC:', id, 'to status:', status);
+
+    // Use RPC function instead of direct PATCH to respect business logic
+    const { error } = await supabase.rpc('update_order_status', {
+      order_uuid: id,
+      new_status: status,
+    });
 
     if (error) {
-      console.error('[OrdersRepository.updateStatus] error:', error);
+      console.error('[OrdersRepository.updateStatus] RPC error:', error);
       throw error;
     }
-    return data;
-  },
 
-  async assignDeliveryBoy(id: string, deliveryBoyId: string) {
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ delivery_boy_id: deliveryBoyId })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[OrdersRepository.assignDeliveryBoy] error:', error);
-      throw error;
-    }
-    return data;
+    console.log('[OrdersRepository.updateStatus] RPC call successful');
+    invalidate('orders');
+    return { id, status };
   },
 };
 
 // ─── Delivery Staff ───────────────────────────────────────────────────────
 export const DeliveryRepository = {
   async getDeliveryBoys() {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('role', 'delivery_boy');
-    if (error) throw error;
-    return data;
+    return cachedFetch('delivery:all', async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'delivery_boy');
+      if (error) throw error;
+      return data;
+    });
   },
 };
 
 // ─── Pincodes ─────────────────────────────────────────────────────────────
 export const PincodeRepository = {
   async getAll() {
-    const { data, error } = await supabase
-      .from('serviceable_pincodes')
-      .select('*');
-    if (error) throw error;
-    return data;
+    return cachedFetch('pincodes:all', async () => {
+      const { data, error } = await supabase
+        .from('serviceable_pincodes')
+        .select('*');
+      if (error) throw error;
+      return data;
+    });
   },
 
   async update(
@@ -147,6 +157,7 @@ export const PincodeRepository = {
       .select()
       .single();
     if (error) throw error;
+    invalidate('pincodes');
     return data;
   },
 };

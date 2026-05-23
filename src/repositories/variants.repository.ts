@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { invalidate } from '../lib/cache';
 import type { VariantInsert, VariantUpdate, ProductVariant } from '../types/catalog';
 
 export const VariantsRepository = {
@@ -10,6 +11,7 @@ export const VariantsRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('products');
     return data as ProductVariant;
   },
 
@@ -22,6 +24,7 @@ export const VariantsRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('products');
     return data as ProductVariant;
   },
 
@@ -34,6 +37,7 @@ export const VariantsRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('products');
     return data as ProductVariant;
   },
 
@@ -46,6 +50,7 @@ export const VariantsRepository = {
       .single();
 
     if (error) throw error;
+    invalidate('products');
     return data as ProductVariant;
   },
 
@@ -55,5 +60,6 @@ export const VariantsRepository = {
     });
 
     if (error) throw error;
+    invalidate('products');
   },
 };
