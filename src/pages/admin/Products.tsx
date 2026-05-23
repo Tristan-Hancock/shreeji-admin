@@ -14,8 +14,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ProductsRepository } from '../../repositories/products.repository';
 import { CategoriesRepository } from '../../repositories/categories.repository';
+import { VariantsRepository } from '../../repositories/variants.repository';
 import type { ProductListItem, Category } from '../../types/catalog';
-import type { ProductInsert } from '../../types/catalog';
+import type { ProductInsert, VariantInsert } from '../../types/catalog';
 import { cn, formatCurrency, generateSlug } from '../../lib/utils';
 import StatusBadge from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -60,6 +61,9 @@ interface ProductFormValues {
   description: string;
   image_url: string;
   is_active: boolean;
+  price: string;
+  mrp: string;
+  stock_qty: string;
 }
 
 const BLANK_PRODUCT: ProductFormValues = {
@@ -70,6 +74,9 @@ const BLANK_PRODUCT: ProductFormValues = {
   description: '',
   image_url: '',
   is_active: true,
+  price: '',
+  mrp: '',
+  stock_qty: '0',
 };
 
 interface ProductFormProps {
@@ -230,6 +237,60 @@ function ProductForm({
         />
       </div>
 
+      {/* Section: Pricing */}
+      <div>
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+          Pricing
+        </p>
+        <p className="text-xs text-neutral-400 mb-3">
+          Optional — sets a single default price. Leave blank to add variants with individual prices later.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              Selling Price (₹)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={values.price}
+              onChange={(e) => setValues((p) => ({ ...p, price: e.target.value }))}
+              placeholder="0.00"
+              className={field}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              MRP (₹) <span className="font-normal text-neutral-400">(optional)</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={values.mrp}
+              onChange={(e) => setValues((p) => ({ ...p, mrp: e.target.value }))}
+              placeholder="0.00"
+              className={field}
+            />
+          </div>
+        </div>
+        {values.price && (
+          <div className="mt-3">
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+              Stock Quantity
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={values.stock_qty}
+              onChange={(e) => setValues((p) => ({ ...p, stock_qty: e.target.value }))}
+              className={field}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Section: Visibility */}
       <div>
         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
@@ -383,7 +444,7 @@ export default function Products() {
     setSubmitting(true);
     setFormError(null);
     try {
-      const payload = {
+      const product = await ProductsRepository.createProduct({
         category_id: values.category_id,
         name: values.name.trim(),
         slug: values.slug.trim(),
@@ -391,9 +452,20 @@ export default function Products() {
         description: values.description.trim() || null,
         image_url: values.image_url.trim() || null,
         is_active: values.is_active,
-      };
+      } as ProductInsert);
 
-      await ProductsRepository.createProduct(payload as ProductInsert);
+      const price = parseFloat(values.price);
+      if (!isNaN(price) && price > 0) {
+        await VariantsRepository.createVariant({
+          product_id: product.id,
+          variant_name: 'Default',
+          price,
+          mrp: values.mrp ? parseFloat(values.mrp) : null,
+          stock_qty: parseInt(values.stock_qty, 10) || 0,
+          is_active: true,
+        } as VariantInsert);
+      }
+
       closePanel();
       await fetchProducts();
     } catch (err: any) {
