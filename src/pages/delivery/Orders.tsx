@@ -4,7 +4,7 @@ import { MapPin, Phone, Clock, AlertCircle, ShoppingBag } from 'lucide-react';
 import { OrdersRepository } from '../../repositories';
 import type { OrderWithItems } from '../../repositories';
 import StatusBadge from '../../components/ui/StatusBadge';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { formatCurrency, formatDate, formatOrderAddress } from '../../lib/utils';
 import { motion } from 'motion/react';
 
 export default function DeliveryOrders() {
@@ -116,11 +116,20 @@ export default function DeliveryOrders() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-neutral-700">
                     <Phone className="h-4 w-4 text-neutral-400 flex-shrink-0" />
-                    {order.customer_phone || 'N/A'}
+                    {order.phone || 'N/A'}
                   </div>
                   <div className="flex items-start gap-2 text-sm text-neutral-700">
                     <MapPin className="h-4 w-4 text-neutral-400 flex-shrink-0 mt-0.5" />
-                    <span className="line-clamp-2">{order.customer_address || 'No address'}</span>
+                    <span className="line-clamp-2">
+                      {formatOrderAddress(
+                        order.address_line_1,
+                        order.address_line_2,
+                        order.landmark,
+                        order.city,
+                        order.state,
+                        order.pincode
+                      )}
+                    </span>
                   </div>
                 </div>
 
@@ -135,7 +144,7 @@ export default function DeliveryOrders() {
                   <div className="rounded bg-emerald-50 p-2">
                     <p className="text-xs text-emerald-600 font-semibold">Total</p>
                     <p className="text-lg font-bold text-emerald-900">
-                      {formatCurrency(order.total_amount || 0)}
+                      {formatCurrency(order.total || 0)}
                     </p>
                   </div>
                 </div>

@@ -11,7 +11,7 @@ import {
 import { OrdersRepository } from '../../repositories';
 import type { OrderWithItems } from '../../repositories';
 import StatusBadge from '../../components/ui/StatusBadge';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { formatCurrency, formatDate, formatOrderAddress } from '../../lib/utils';
 import { motion } from 'motion/react';
 import { useToast } from '../../components/ui/Toast';
 
@@ -62,14 +62,22 @@ export default function DeliveryOrderDetail() {
   };
 
   const handleCallCustomer = () => {
-    if (order?.customer_phone) {
-      window.location.href = `tel:${order.customer_phone}`;
+    if (order?.phone) {
+      window.location.href = `tel:${order.phone}`;
     }
   };
 
   const handleOpenMaps = () => {
-    if (order?.customer_address) {
-      const encodedAddress = encodeURIComponent(order.customer_address);
+    if (order) {
+      const address = formatOrderAddress(
+        order.address_line_1,
+        order.address_line_2,
+        order.landmark,
+        order.city,
+        order.state,
+        order.pincode
+      );
+      const encodedAddress = encodeURIComponent(address);
       window.open(
         `https://maps.google.com/?q=${encodedAddress}`,
         '_blank'
@@ -151,14 +159,21 @@ export default function DeliveryOrderDetail() {
           <div>
             <p className="text-xs text-neutral-500 font-semibold mb-1">Phone</p>
             <p className="text-sm font-semibold text-neutral-900">
-              {order.customer_phone || 'Not provided'}
+              {order.phone || 'Not provided'}
             </p>
           </div>
 
           <div>
             <p className="text-xs text-neutral-500 font-semibold mb-1">Delivery Address</p>
             <p className="text-sm text-neutral-900 mt-1">
-              {order.customer_address || 'No address provided'}
+              {formatOrderAddress(
+                order.address_line_1,
+                order.address_line_2,
+                order.landmark,
+                order.city,
+                order.state,
+                order.pincode
+              )}
             </p>
           </div>
         </div>
@@ -182,14 +197,14 @@ export default function DeliveryOrderDetail() {
               >
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-neutral-900">
-                    {item.product_name || 'Unknown Product'}
+                    {item.product_name_snapshot || 'Unknown Product'}
                   </p>
                   <p className="text-xs text-neutral-500 mt-0.5">
-                    Qty: {item.quantity} × {formatCurrency(item.price_at_order)}
+                    Qty: {item.quantity} × {formatCurrency(item.price_snapshot)}
                   </p>
                 </div>
                 <p className="text-sm font-bold text-neutral-900">
-                  {formatCurrency(item.quantity * item.price_at_order)}
+                  {formatCurrency(item.total || 0)}
                 </p>
               </div>
             ))}
@@ -211,7 +226,7 @@ export default function DeliveryOrderDetail() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button
           onClick={handleCallCustomer}
-          disabled={!order.customer_phone}
+          disabled={!order.phone}
           className="flex items-center justify-center gap-2 rounded-lg bg-blue-50 px-4 py-4 font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition-colors"
         >
           <Phone className="h-5 w-5" />
@@ -220,7 +235,7 @@ export default function DeliveryOrderDetail() {
 
         <button
           onClick={handleOpenMaps}
-          disabled={!order.customer_address}
+          disabled={!order.address_line_1}
           className="flex items-center justify-center gap-2 rounded-lg bg-purple-50 px-4 py-4 font-semibold text-purple-700 hover:bg-purple-100 disabled:opacity-50 transition-colors"
         >
           <MapPin className="h-5 w-5" />

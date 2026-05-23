@@ -101,21 +101,22 @@ export const OrdersRepository = {
   },
 
   async updateStatus(id: string, status: string) {
-    console.log('[OrdersRepository.updateStatus] Updating order:', id, 'to status:', status);
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ order_status: status })
-      .eq('id', id)
-      .select()
-      .single();
+    console.log('[OrdersRepository.updateStatus] Updating order via RPC:', id, 'to status:', status);
+
+    // Use RPC function instead of direct PATCH to respect business logic
+    const { error } = await supabase.rpc('update_order_status', {
+      order_uuid: id,
+      new_status: status,
+    });
 
     if (error) {
-      console.error('[OrdersRepository.updateStatus] error:', error);
+      console.error('[OrdersRepository.updateStatus] RPC error:', error);
       throw error;
     }
-    console.log('[OrdersRepository.updateStatus] Update successful');
+
+    console.log('[OrdersRepository.updateStatus] RPC call successful');
     invalidate('orders');
-    return data;
+    return { id, status };
   },
 };
 

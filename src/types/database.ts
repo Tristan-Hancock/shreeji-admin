@@ -235,29 +235,32 @@ export type Database = {
         Row: {
           id: string
           order_id: string
-          variant_id: string
-          product_name: string
-          variant_name: string
+          product_variant_id: string | null
+          product_name_snapshot: string
+          variant_snapshot: string | null
+          price_snapshot: number
           quantity: number
-          price_at_order: number
+          total: number
         }
         Insert: {
           id?: string
           order_id: string
-          variant_id: string
-          product_name: string
-          variant_name: string
+          product_variant_id?: string | null
+          product_name_snapshot: string
+          variant_snapshot?: string | null
+          price_snapshot: number
           quantity: number
-          price_at_order: number
+          total: number
         }
         Update: {
           id?: string
           order_id?: string
-          variant_id?: string
-          product_name?: string
-          variant_name?: string
+          product_variant_id?: string | null
+          product_name_snapshot?: string
+          variant_snapshot?: string | null
+          price_snapshot?: number
           quantity?: number
-          price_at_order?: number
+          total?: number
         }
       }
 

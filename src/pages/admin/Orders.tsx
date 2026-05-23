@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { OrdersRepository, type OrderWithItems } from '../../repositories';
-import { formatCurrency, formatDate, cn } from '../../lib/utils';
+import { formatCurrency, formatDate, formatOrderAddress, cn } from '../../lib/utils';
 import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/ui/EmptyState';
 import { useToast } from '../../components/ui/Toast';
@@ -53,7 +53,7 @@ export default function Orders() {
       await fetchOrders();
       if (selectedOrder?.id === id) {
         setSelectedOrder((prev) =>
-          prev ? { ...prev, status: status as any } : null,
+          prev ? { ...prev, order_status: status as any } : null,
         );
       }
     } catch (err: any) {
@@ -188,7 +188,7 @@ export default function Orders() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold">{order.customer_name ?? '—'}</span>
-                        <span className="text-xs text-neutral-500">{order.customer_phone ?? '—'}</span>
+                        <span className="text-xs text-neutral-500">{order.phone ?? '—'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-600">
@@ -278,12 +278,12 @@ export default function Orders() {
                   <div className="p-4 bg-neutral-50 rounded-2xl">
                     <span className="text-[10px] font-bold text-neutral-500 uppercase mb-1 block">Customer</span>
                     <p className="text-sm font-bold">{selectedOrder.customer_name ?? '—'}</p>
-                    <p className="text-xs text-neutral-600">{selectedOrder.customer_phone ?? '—'}</p>
+                    <p className="text-xs text-neutral-600">{selectedOrder.phone ?? '—'}</p>
                   </div>
                   <div className="p-4 bg-neutral-50 rounded-2xl">
                     <span className="text-[10px] font-bold text-neutral-500 uppercase mb-1 block">Payment</span>
                     <p className="text-sm font-bold uppercase">{selectedOrder.payment_method ?? '—'}</p>
-                    <StatusBadge status={selectedOrder.status ?? 'pending'} />
+                    <StatusBadge status={selectedOrder.order_status ?? 'pending'} />
                   </div>
                 </div>
 
@@ -292,8 +292,16 @@ export default function Orders() {
                   <div className="flex gap-3 items-start p-4 border border-neutral-100 rounded-2xl">
                     <MapPin className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm text-neutral-700 leading-relaxed">{selectedOrder.customer_address ?? '—'}</p>
-                      <p className="text-sm font-bold mt-1">Pincode: {selectedOrder.pincode ?? '—'}</p>
+                      <p className="text-sm text-neutral-700 leading-relaxed">
+                        {formatOrderAddress(
+                          selectedOrder.address_line_1,
+                          selectedOrder.address_line_2,
+                          selectedOrder.landmark,
+                          selectedOrder.city,
+                          selectedOrder.state,
+                          selectedOrder.pincode
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -306,10 +314,10 @@ export default function Orders() {
                       selectedOrder.order_items.map((item) => (
                         <div key={item.id} className="flex justify-between items-center p-3 border border-neutral-100 rounded-xl">
                           <div>
-                            <p className="text-sm font-bold">{item.product_name ?? '—'}</p>
-                            <p className="text-xs text-neutral-500">{item.variant_name ?? '—'} x {item.quantity ?? 0}</p>
+                            <p className="text-sm font-bold">{item.product_name_snapshot ?? '—'}</p>
+                            <p className="text-xs text-neutral-500">{item.variant_snapshot ?? '—'} x {item.quantity ?? 0}</p>
                           </div>
-                          <p className="text-sm font-bold">{formatCurrency((item.price_at_order ?? 0) * (item.quantity ?? 0))}</p>
+                          <p className="text-sm font-bold">{formatCurrency(item.total ?? 0)}</p>
                         </div>
                       ))
                     ) : (
