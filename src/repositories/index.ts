@@ -52,6 +52,30 @@ export const OrdersRepository = {
         throw error;
       }
 
+      console.log('[OrdersRepository.listAdminOrders] Query successful, rows:', data?.length ?? 0);
+      return (data ?? []) as OrderWithItems[];
+    });
+  },
+
+  async listPendingOrders(): Promise<OrderWithItems[]> {
+    console.log('[OrdersRepository.listPendingOrders] Querying pending orders...');
+    return cachedFetch('orders:pending', async () => {
+      console.log('[OrdersRepository.listPendingOrders] Cache miss, fetching from database...');
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (*)
+        `)
+        .eq('order_status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[OrdersRepository.listPendingOrders] query error:', error);
+        throw error;
+      }
+
+      console.log('[OrdersRepository.listPendingOrders] Query successful, rows:', data?.length ?? 0);
       return (data ?? []) as OrderWithItems[];
     });
   },
@@ -77,35 +101,22 @@ export const OrdersRepository = {
   },
 
   async updateStatus(id: string, status: string) {
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ status })
-      .eq('id', id)
-      .select()
-      .single();
+    console.log('[OrdersRepository.updateStatus] Updating order via RPC:', id, 'to status:', status);
+
+    // Use RPC function instead of direct PATCH to respect business logic
+    const { error } = await supabase.rpc('update_order_status', {
+      order_uuid: id,
+      new_status: status,
+    });
 
     if (error) {
-      console.error('[OrdersRepository.updateStatus] error:', error);
+      console.error('[OrdersRepository.updateStatus] RPC error:', error);
       throw error;
     }
-    invalidate('orders');
-    return data;
-  },
 
-  async assignDeliveryBoy(id: string, deliveryBoyId: string) {
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ delivery_boy_id: deliveryBoyId })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[OrdersRepository.assignDeliveryBoy] error:', error);
-      throw error;
-    }
+    console.log('[OrdersRepository.updateStatus] RPC call successful');
     invalidate('orders');
-    return data;
+    return { id, status };
   },
 };
 

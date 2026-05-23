@@ -15,22 +15,31 @@ export type Database = {
           id: string
           email: string
           full_name: string | null
+          phone: string | null
           role: 'admin' | 'delivery_boy'
+          is_active: boolean
           created_at: string
+          updated_at: string | null
         }
         Insert: {
           id: string
           email: string
           full_name?: string | null
+          phone?: string | null
           role?: 'admin' | 'delivery_boy'
+          is_active?: boolean
           created_at?: string
+          updated_at?: string | null
         }
         Update: {
           id?: string
           email?: string
           full_name?: string | null
+          phone?: string | null
           role?: 'admin' | 'delivery_boy'
+          is_active?: boolean
           created_at?: string
+          updated_at?: string | null
         }
       }
 
@@ -154,38 +163,71 @@ export type Database = {
         Row: {
           id: string
           customer_name: string
-          customer_phone: string
-          customer_address: string
+          phone: string
+          address_line_1: string
+          address_line_2: string | null
+          landmark: string | null
+          city: string
+          state: string
           pincode: string
-          total_amount: number
-          payment_method: 'cod' | 'online'
-          status: 'pending' | 'accepted' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled'
+          subtotal: number
+          delivery_fee: number
+          total: number
+          payment_method: 'cod' | 'upi'
+          payment_status: 'pending' | 'completed' | 'failed'
+          order_status: 'pending' | 'completed' | 'cancelled'
           delivery_boy_id: string | null
+          assigned_at: string | null
+          delivered_at: string | null
+          notes: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           customer_name: string
-          customer_phone: string
-          customer_address: string
+          phone: string
+          address_line_1: string
+          address_line_2?: string | null
+          landmark?: string | null
+          city: string
+          state: string
           pincode: string
-          total_amount: number
-          payment_method: 'cod' | 'online'
-          status?: 'pending' | 'accepted' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled'
+          subtotal: number
+          delivery_fee?: number
+          total: number
+          payment_method: 'cod' | 'upi'
+          payment_status?: 'pending' | 'completed' | 'failed'
+          order_status?: 'pending' | 'completed' | 'cancelled'
           delivery_boy_id?: string | null
+          assigned_at?: string | null
+          delivered_at?: string | null
+          notes?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           customer_name?: string
-          customer_phone?: string
-          customer_address?: string
+          phone?: string
+          address_line_1?: string
+          address_line_2?: string | null
+          landmark?: string | null
+          city?: string
+          state?: string
           pincode?: string
-          total_amount?: number
-          payment_method?: 'cod' | 'online'
-          status?: 'pending' | 'accepted' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled'
+          subtotal?: number
+          delivery_fee?: number
+          total?: number
+          payment_method?: 'cod' | 'upi'
+          payment_status?: 'pending' | 'completed' | 'failed'
+          order_status?: 'pending' | 'completed' | 'cancelled'
           delivery_boy_id?: string | null
+          assigned_at?: string | null
+          delivered_at?: string | null
+          notes?: string | null
           created_at?: string
+          updated_at?: string
         }
       }
 
@@ -193,29 +235,32 @@ export type Database = {
         Row: {
           id: string
           order_id: string
-          variant_id: string
-          product_name: string
-          variant_name: string
+          product_variant_id: string | null
+          product_name_snapshot: string
+          variant_snapshot: string | null
+          price_snapshot: number
           quantity: number
-          price_at_order: number
+          total: number
         }
         Insert: {
           id?: string
           order_id: string
-          variant_id: string
-          product_name: string
-          variant_name: string
+          product_variant_id?: string | null
+          product_name_snapshot: string
+          variant_snapshot?: string | null
+          price_snapshot: number
           quantity: number
-          price_at_order: number
+          total: number
         }
         Update: {
           id?: string
           order_id?: string
-          variant_id?: string
-          product_name?: string
-          variant_name?: string
+          product_variant_id?: string | null
+          product_name_snapshot?: string
+          variant_snapshot?: string | null
+          price_snapshot?: number
           quantity?: number
-          price_at_order?: number
+          total?: number
         }
       }
 

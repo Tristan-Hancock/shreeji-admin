@@ -23,6 +23,29 @@ export function formatDate(date: string) {
 }
 
 /**
+ * Formats order address from individual fields into a readable string
+ */
+export function formatOrderAddress(
+  addressLine1: string | null | undefined,
+  addressLine2: string | null | undefined,
+  landmark: string | null | undefined,
+  city: string | null | undefined,
+  state: string | null | undefined,
+  pincode: string | null | undefined
+): string {
+  const parts = [];
+
+  if (addressLine1) parts.push(addressLine1);
+  if (addressLine2) parts.push(addressLine2);
+  if (landmark) parts.push(`(${landmark})`);
+  if (city) parts.push(city);
+  if (state) parts.push(state);
+  if (pincode) parts.push(pincode);
+
+  return parts.length > 0 ? parts.join(', ') : 'No address provided';
+}
+
+/**
  * Converts a human-readable name into a URL-safe slug.
  * e.g. "Bath & Soaps" → "bath-soaps"
  */

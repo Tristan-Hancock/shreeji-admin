@@ -11,20 +11,59 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  console.log('[Login] Component rendered, state:', { email, password, loading, error });
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
+      console.log('[Login] Attempting login with email:', email);
       const { error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) throw authError;
-      navigate('/admin/dashboard');
+      if (authError) {
+        console.error('[Login] Auth error:', authError);
+        throw authError;
+      }
+
+      console.log('[Login] Login successful, fetching user profile to determine role...');
+
+      // Get user's profile to determine where to redirect
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not found after login');
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        console.error('[Login] Profile fetch error:', profileError);
+        throw new Error('Unable to load user profile');
+      }
+
+      console.log('[Login] User profile found, role:', profile.role);
+
+      // Redirect based on role
+      if (profile.role === 'admin') {
+        console.log('[Login] Admin user, redirecting to /admin/dashboard');
+        navigate('/admin/dashboard');
+      } else if (profile.role === 'delivery_boy') {
+        console.log('[Login] Delivery user, redirecting to /delivery/orders');
+        navigate('/delivery/orders');
+      } else {
+        console.warn('[Login] Unknown role:', profile.role);
+        throw new Error(`Unknown user role: ${profile.role}`);
+      }
     } catch (err: any) {
+      console.error('[Login] Login error:', err);
       setError(err.message || 'Failed to login');
     } finally {
       setLoading(false);
@@ -47,7 +86,10 @@ export default function Login() {
         </div>
 
         <div className="bg-white p-8 rounded-2xl shadow-xl shadow-neutral-200 border border-neutral-100">
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={(e) => {
+            console.log('[Login] Form submitted, email:', email, 'password length:', password.length);
+            handleLogin(e);
+          }} className="space-y-6">
             {error && (
               <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-start gap-3 border border-red-100">
                 <AlertCircle className="w-5 h-5 shrink-0" />
@@ -88,6 +130,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
+              onClick={() => console.log('[Login] Button clicked, loading:', loading)}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-70"
             >
               <LogIn className="w-5 h-5" />
