@@ -1,0 +1,17 @@
+{
+  "deno.enable": true,
+  "deno.lint": true,
+  "deno.unstable": true,
+  "[typescript]": {
+    "defaultFormatter": "denoland.vscode-deno",
+    "editor.formatOnSave": true
+  },
+  "[javascript]": {
+    "defaultFormatter": "denoland.vscode-deno",
+    "editor.formatOnSave": true
+  },
+  // Configure Deno for specific directories
+  "deno.enablePaths": ["./supabase/functions"],
+  // Exclude regular TypeScript from Deno checking
+  "deno.disablePaths": ["./src", "./dist"]
+}

@@ -3,8 +3,8 @@
     "supabase": "https://esm.sh/@supabase/supabase-js@2.38.0"
   },
   "compilerOptions": {
-    "lib": ["deno.window"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "https://esm.sh/react@18"
+    "lib": ["deno.window", "deno.unstable"],
+    "allowJs": true,
+    "strict": true
   }
 }
