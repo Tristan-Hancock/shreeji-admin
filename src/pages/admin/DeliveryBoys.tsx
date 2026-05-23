@@ -15,7 +15,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DeliveryService } from '../../services/delivery.service';
 import { formatDate, cn } from '../../lib/utils';
 import { useToast } from '../../components/ui/Toast';
-import { supabase } from '../../lib/supabase';
 import CreateDeliveryUserForm from '../../components/delivery/CreateDeliveryUserForm';
 import type { Database } from '../../types/database';
 
@@ -73,38 +72,23 @@ export default function DeliveryBoys() {
     }
   };
 
-  const handleDeleteDeliveryBoy = async () => {
+  const handleDeactivateDeliveryBoy = async () => {
     if (!deleteConfirm) return;
 
     try {
       setIsDeleting(true);
 
-      // Delete from auth (using admin API)
-      const { error: deleteError } = await supabase.auth.admin.deleteUser(deleteConfirm.id);
+      // Call Edge Function to deactivate user securely
+      await DeliveryService.deactivateDeliveryUserSecure(deleteConfirm.id);
 
-      if (deleteError) {
-        throw deleteError;
-      }
-
-      // Delete from profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', deleteConfirm.id);
-
-      if (profileError) {
-        console.error('[DeliveryBoys] Profile deletion error:', profileError);
-        // Continue anyway
-      }
-
-      // Update local state
+      // Update local state to remove from active list
       setStaff(staff.filter((s) => s.id !== deleteConfirm.id));
 
-      toast('success', `${deleteConfirm.name} has been deleted`);
+      toast('success', `${deleteConfirm.name} has been deactivated`);
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('[DeliveryBoys] Error deleting staff:', err);
-      const msg = err instanceof Error ? err.message : 'Failed to delete staff member';
+      console.error('[DeliveryBoys] Error deactivating staff:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to deactivate staff member';
       toast('error', msg);
     } finally {
       setIsDeleting(false);
@@ -303,8 +287,8 @@ export default function DeliveryBoys() {
                               name: member.full_name || 'Staff Member',
                             })
                           }
-                          className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                          title="Delete staff member"
+                          className="p-2 rounded-lg text-orange-600 hover:bg-orange-50 transition-colors"
+                          title="Deactivate staff member"
                         >
                           <Trash2 className="h-5 w-5" />
                         </button>
@@ -346,12 +330,12 @@ export default function DeliveryBoys() {
           <li>✓ Delivery staff can login and see pending orders</li>
           <li>✓ They can mark orders as completed</li>
           <li>✓ Deactivate staff to revoke access without deleting their history</li>
-          <li>✓ Delete staff to permanently remove them from the system</li>
+          <li>✓ All order and delivery history is preserved when deactivated</li>
           <li>✓ Only admins can create and manage delivery staff</li>
         </ul>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Deactivate Confirmation Modal */}
       <AnimatePresence>
         {deleteConfirm && (
           <>
@@ -370,21 +354,22 @@ export default function DeliveryBoys() {
             >
               <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-red-100 rounded-xl">
-                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  <div className="p-3 bg-orange-100 rounded-xl">
+                    <AlertTriangle className="w-6 h-6 text-orange-600" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-neutral-900">Delete Staff Member?</h2>
-                    <p className="text-xs text-neutral-500">This action cannot be undone</p>
+                    <h2 className="font-bold text-neutral-900">Deactivate Staff Member?</h2>
+                    <p className="text-xs text-neutral-500">The user will not be able to login</p>
                   </div>
                 </div>
 
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-900">
-                  <p className="font-semibold mb-2">Deleting {deleteConfirm.name}</p>
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-900">
+                  <p className="font-semibold mb-2">Deactivating {deleteConfirm.name}</p>
                   <ul className="space-y-1 text-xs list-disc list-inside">
-                    <li>Account will be permanently deleted</li>
+                    <li>User will not be able to login</li>
                     <li>All authentication access will be revoked</li>
-                    <li>User data will be removed</li>
+                    <li>Order history will be preserved</li>
+                    <li>Delivery tracking data will be retained</li>
                   </ul>
                 </div>
 
@@ -396,12 +381,12 @@ export default function DeliveryBoys() {
                     Cancel
                   </button>
                   <button
-                    onClick={handleDeleteDeliveryBoy}
+                    onClick={handleDeactivateDeliveryBoy}
                     disabled={isDeleting}
-                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
                   >
                     <Trash2 className="w-4 h-4" />
-                    {isDeleting ? 'Deleting...' : 'Delete'}
+                    {isDeleting ? 'Deactivating...' : 'Deactivate'}
                   </button>
                 </div>
               </div>
