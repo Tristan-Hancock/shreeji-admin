@@ -49,21 +49,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create user client to verify current user
-    const userClient = createClient(
-      Deno.env.get('SUPABASE_URL') || '',
-      Deno.env.get('SUPABASE_ANON_KEY') || '',
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
-    );
-
     // Create admin client for privileged operations
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL') || '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     );
 
-    // Verify the current user (the one making the request)
-    const { data: { user: currentUser }, error: currentUserError } = await userClient.auth.getUser();
+    // Verify the current user by passing the token directly — correct server-side pattern
+    // (auth.getUser() without a token doesn't work in Deno; there is no localStorage session)
+    const { data: { user: currentUser }, error: currentUserError } = await adminClient.auth.getUser(token);
 
     if (currentUserError || !currentUser) {
       return new Response(
