@@ -33,11 +33,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function initAuth() {
       try {
-        console.log('[AuthProvider] Initializing auth...');
+        if (import.meta.env.DEV) console.log('[AuthProvider] Initializing auth...');
 
         // Get initial session
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('[AuthProvider] Initial session:', {
+        if (import.meta.env.DEV) console.log('[AuthProvider] Initial session:', {
           user: session?.user?.id,
           email: session?.user?.email,
           hasSession: !!session,
@@ -45,16 +45,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUser(session?.user ?? null);
         if (session?.user) {
-          console.log('[AuthProvider] Fetching profile for user:', session.user.id);
+          if (import.meta.env.DEV) console.log('[AuthProvider] Fetching profile for user:', session.user.id);
           await fetchProfile(session.user.id);
         } else {
-          console.log('[AuthProvider] No session, setting loading to false');
+          if (import.meta.env.DEV) console.log('[AuthProvider] No session, setting loading to false');
           setLoading(false);
         }
 
         // Listen for auth changes - only fetch if user ID actually changed
         const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
-          console.log('[AuthProvider] Auth state changed:', {
+          if (import.meta.env.DEV) console.log('[AuthProvider] Auth state changed:', {
             event: _event,
             user: session?.user?.id,
             email: session?.user?.email,
@@ -64,13 +64,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (session?.user) {
             // Only fetch if this is a different user
             if (lastFetchedUserRef.current !== session.user.id) {
-              console.log('[AuthProvider] Auth state change: fetching profile');
+              if (import.meta.env.DEV) console.log('[AuthProvider] Auth state change: fetching profile');
               await fetchProfile(session.user.id);
             } else {
-              console.log('[AuthProvider] Auth state change: same user, skipping fetch');
+              if (import.meta.env.DEV) console.log('[AuthProvider] Auth state change: same user, skipping fetch');
             }
           } else {
-            console.log('[AuthProvider] Auth state change: clearing profile');
+            if (import.meta.env.DEV) console.log('[AuthProvider] Auth state change: clearing profile');
             setProfile(null);
             setProfileLoading(false);
             setLoading(false);
@@ -97,12 +97,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function fetchProfile(uid: string) {
     // Prevent concurrent fetches
     if (fetchInProgressRef.current) {
-      console.log('[AuthProvider.fetchProfile] Fetch already in progress, skipping');
+      if (import.meta.env.DEV) console.log('[AuthProvider.fetchProfile] Fetch already in progress, skipping');
       return;
     }
 
     try {
-      console.log('[AuthProvider.fetchProfile] Starting profile fetch for:', uid);
+      if (import.meta.env.DEV) console.log('[AuthProvider.fetchProfile] Starting profile fetch for:', uid);
       fetchInProgressRef.current = true;
       setProfileLoading(true);
 
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
 
-      console.log('[AuthProvider.fetchProfile] Profile fetched successfully:', {
+      if (import.meta.env.DEV) console.log('[AuthProvider.fetchProfile] Profile fetched successfully:', {
         id: data?.id,
         email: data?.email,
         role: data?.role,
@@ -140,16 +140,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Don't update lastFetchedUserRef so we can retry later
     } finally {
       fetchInProgressRef.current = false;
-      console.log('[AuthProvider.fetchProfile] Profile fetch completed');
+      if (import.meta.env.DEV) console.log('[AuthProvider.fetchProfile] Profile fetch completed');
       setProfileLoading(false);
       setLoading(false);
     }
   }
 
   const signOut = async () => {
-    console.log('[AuthProvider] Signing out...');
+    if (import.meta.env.DEV) console.log('[AuthProvider] Signing out...');
     await supabase.auth.signOut();
-    console.log('[AuthProvider] Sign out completed');
+    if (import.meta.env.DEV) console.log('[AuthProvider] Sign out completed');
   };
 
   return (

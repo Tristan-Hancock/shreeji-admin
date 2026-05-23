@@ -15,6 +15,9 @@ export default defineConfig({
     host: '0.0.0.0',
   },
   build: {
+    // Optimize build output
+    minify: 'terser',
+    sourcemap: false, // Set to 'hidden' in production for error tracking
     rollupOptions: {
       output: {
         // Split vendor chunks for better long-term caching and smaller initial load

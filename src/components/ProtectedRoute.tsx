@@ -8,7 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 export default function ProtectedRoute() {
   const { user, loading } = useAuth();
 
-  console.log('[ProtectedRoute] Checking auth:', {
+  if (import.meta.env.DEV) console.log('[ProtectedRoute] Checking auth:', {
     loading,
     user: user?.id,
     email: user?.email,
@@ -28,6 +28,6 @@ export default function ProtectedRoute() {
     return <Navigate to="/admin/login" replace />;
   }
 
-  console.log('[ProtectedRoute] User authenticated, rendering outlet');
+  if (import.meta.env.DEV) console.log('[ProtectedRoute] User authenticated, rendering outlet');
   return <Outlet />;
 }

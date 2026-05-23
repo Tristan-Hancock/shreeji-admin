@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Truck, LogIn, Lock, Mail, AlertCircle } from 'lucide-react';
+import { LogIn, Lock, Mail, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
+import shreejiLogo from '../../assets/shreejilogo.png';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -78,8 +79,8 @@ export default function Login() {
         className="max-w-md w-full"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 rounded-2xl mb-4 shadow-xl shadow-emerald-200">
-            <Truck className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
+            <img src={shreejiLogo} alt="ShreeJi Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-neutral-900">ShreeJi Store Manager Admin</h1>
           <p className="text-neutral-500 mt-2">Sign in to manage your grocery operations</p>

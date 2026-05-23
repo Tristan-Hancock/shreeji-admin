@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 export default function RequireDeliveryBoy() {
   const { user, loading, profileLoading, profile } = useAuth();
 
-  console.log('[RequireDeliveryBoy] Render check:', {
+  if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] Render check:', {
     loading,
     profileLoading,
     user: user?.id,
@@ -18,7 +18,7 @@ export default function RequireDeliveryBoy() {
 
   // Show loading while initial auth or profile is being fetched
   if (loading || profileLoading) {
-    console.log('[RequireDeliveryBoy] Still loading, showing spinner');
+    if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] Still loading, showing spinner');
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
@@ -29,13 +29,13 @@ export default function RequireDeliveryBoy() {
   // After loading is complete, check authentication
   // Only redirect if we're sure user is not authenticated or not delivery_boy
   if (!user) {
-    console.log('[RequireDeliveryBoy] No user, redirecting to login');
+    if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] No user, redirecting to login');
     return <Navigate to="/admin/login" replace />;
   }
 
   // If we have a user but profile failed to load, show an error
   if (profile === null) {
-    console.log('[RequireDeliveryBoy] User exists but profile is null, showing error');
+    if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] User exists but profile is null, showing error');
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -54,12 +54,12 @@ export default function RequireDeliveryBoy() {
   }
 
   // Check if user has delivery_boy role
-  console.log('[RequireDeliveryBoy] Checking role:', profile.role);
+  if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] Checking role:', profile.role);
   if (profile.role !== 'delivery_boy') {
-    console.log('[RequireDeliveryBoy] User role is not delivery_boy, redirecting to login');
+    if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] User role is not delivery_boy, redirecting to login');
     return <Navigate to="/admin/login" replace />;
   }
 
-  console.log('[RequireDeliveryBoy] All checks passed, rendering outlet');
+  if (import.meta.env.DEV) console.log('[RequireDeliveryBoy] All checks passed, rendering outlet');
   return <Outlet />;
 }

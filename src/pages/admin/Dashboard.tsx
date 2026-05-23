@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { 
-  ShoppingBag, 
-  Clock, 
-  CheckCircle2, 
-  TrendingUp, 
+import {
+  ShoppingBag,
+  Clock,
+  CheckCircle2,
+  TrendingUp,
   AlertTriangle,
   ArrowRight,
   ClipboardList,
   MapPin,
-  Truck,
+  Users,
   Settings
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -183,7 +183,7 @@ export default function Dashboard() {
               <span className="text-sm font-bold">Service Areas</span>
             </Link>
             <Link to="/admin/delivery-boys" className="p-4 rounded-xl border border-neutral-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all flex flex-col items-center text-center gap-3">
-              <Truck className="w-8 h-8 text-emerald-600" />
+              <Users className="w-8 h-8 text-emerald-600" />
               <span className="text-sm font-bold">Staff Mgmt</span>
             </Link>
             <Link to="/admin/settings" className="p-4 rounded-xl border border-neutral-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all flex flex-col items-center text-center gap-3">
